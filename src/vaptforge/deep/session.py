@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 
+import httpx
+
 from vaptforge.models.scope import AuthorizedScope
 
 
@@ -42,3 +44,34 @@ def resolve_session_headers(scope: AuthorizedScope) -> dict[str, str]:
     for header, env_name in scope.session.headers_env.items():
         headers[header] = os.environ[env_name]
     return headers
+
+
+def verify_session(client: httpx.Client, scope: AuthorizedScope) -> str:
+    """Verify configured auth without exposing secret values."""
+    if scope.session is None:
+        return "not-configured"
+
+    if scope.session.verify_url is None:
+        return "configured-unverified"
+
+    scope.require_authorized(scope.session.verify_url)
+    try:
+        response = client.get(scope.session.verify_url, follow_redirects=True)
+    except httpx.HTTPError as exc:
+        raise SessionConfigurationError(
+            f"Session verification request failed: {type(exc).__name__}"
+        ) from exc
+
+    if response.status_code != scope.session.verify_status:
+        raise SessionConfigurationError(
+            "Session verification failed: expected HTTP "
+            f"{scope.session.verify_status}, received {response.status_code}"
+        )
+
+    marker = scope.session.success_contains
+    if marker and marker not in response.text:
+        raise SessionConfigurationError(
+            "Session verification failed: configured success marker was not present"
+        )
+
+    return "verified"
