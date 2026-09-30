@@ -46,7 +46,7 @@ MD / JSON / HTML / PDF      FILTER / EXPORT / HISTORY
 - mandatory explicit scope
 - exact hostname/IP and CIDR matching
 - `shell=False` command execution
-- bounded ffuf defaults
+- bounded ffuf defaults with automatic soft-404/wildcard calibration
 - disruptive Nuclei tags excluded
 - vulnerable labs bound to loopback
 - scanner findings never auto-promoted to VERIFIED
