@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterable
 from importlib import metadata
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
-from typing import Any, Iterable
 
 from vaptforge import __version__
 
