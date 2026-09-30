@@ -69,10 +69,14 @@ def analyze_headers(target: str, headers: Mapping[str, str]) -> list[Finding]:
                 severity=Severity.INFO,
                 asset=AssetRef(target=target, host=host, port=port, protocol=parsed.scheme),
                 source="vaptforge-http",
-                description="The response advertises server software information in the Server header.",
+                description=(
+                    "The response advertises server software information in the Server header."
+                ),
                 location=target,
                 evidence=[Evidence(source="vaptforge-http", summary=f"Server: {server}")],
-                remediation="Minimize unnecessary server version/product disclosure where practical.",
+                remediation=(
+                    "Minimize unnecessary server version/product disclosure where practical."
+                ),
                 tags=["headers", "information-disclosure"],
             )
         )

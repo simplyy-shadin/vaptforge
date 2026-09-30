@@ -27,7 +27,7 @@ class AuthorizedScope(BaseModel):
     targets: list[ScopeEntry] = Field(min_length=1)
 
     @classmethod
-    def from_json_file(cls, path: str | Path) -> "AuthorizedScope":
+    def from_json_file(cls, path: str | Path) -> AuthorizedScope:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         return cls.model_validate(data)
 

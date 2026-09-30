@@ -28,7 +28,14 @@ def render_markdown_report(assessment_name: str, target: str, findings: list[Fin
         "| Severity | Count |",
         "|---|---:|",
     ]
-    for severity in [Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO]:
+    severities = [
+        Severity.CRITICAL,
+        Severity.HIGH,
+        Severity.MEDIUM,
+        Severity.LOW,
+        Severity.INFO,
+    ]
+    for severity in severities:
         lines.append(f"| {severity.label()} | {counts.get(severity.label(), 0)} |")
 
     lines.extend(["", "## Technical Findings", ""])

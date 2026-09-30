@@ -39,6 +39,7 @@ def run_command(args: list[str], *, timeout: int = 300) -> CommandResult:
     result = CommandResult(tuple(args), completed.returncode, completed.stdout, completed.stderr)
     if completed.returncode != 0:
         raise CommandExecutionError(
-            f"Command failed with exit code {completed.returncode}: {executable}\n{completed.stderr.strip()}"
+            "Command failed with exit code "
+            f"{completed.returncode}: {executable}\n{completed.stderr.strip()}"
         )
     return result

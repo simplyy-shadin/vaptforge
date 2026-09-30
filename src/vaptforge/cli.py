@@ -56,7 +56,9 @@ def scope_check(
 def scan(
     target: str = typer.Argument(...),
     scope_file: Path = typer.Option(..., "--scope", exists=True, readable=True),
-    scanners: str = typer.Option("http,nmap,nuclei", "--scanners", help="Comma-separated scanner names."),
+    scanners: str = typer.Option(
+        "http,nmap,nuclei", "--scanners", help="Comma-separated scanner names."
+    ),
     output: Path = typer.Option(Path("assessment-report.md"), "--output"),
     json_output: Path | None = typer.Option(None, "--json-output"),
 ) -> None:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
 
 from vaptforge.models.finding import AssetRef, Evidence, Finding, Severity
 
@@ -27,7 +27,11 @@ def parse_nmap_xml(xml_text: str, *, target: str) -> list[Finding]:
             service = service_node.get("name") if service_node is not None else None
             product = service_node.get("product") if service_node is not None else None
             version = service_node.get("version") if service_node is not None else None
-            product_version = " ".join(part for part in [product, version] if part) or service or "unknown"
+            product_version = (
+                " ".join(part for part in [product, version] if part)
+                or service
+                or "unknown"
+            )
 
             findings.append(
                 Finding(

@@ -15,7 +15,7 @@ class Severity(IntEnum):
     CRITICAL = 4
 
     @classmethod
-    def from_text(cls, value: str | None) -> "Severity":
+    def from_text(cls, value: str | None) -> Severity:
         if not value:
             return cls.INFO
         normalized = value.strip().upper()

@@ -32,11 +32,18 @@ def parse_nuclei_jsonl(text: str, *, target: str) -> list[Finding]:
                 cves=[str(v) for v in cves],
                 cwes=[str(v) for v in cwes],
                 references=[str(v) for v in (info.get("reference") or [])],
-                tags=[str(v) for v in (info.get("tags") or [])] if isinstance(info.get("tags"), list) else [],
+                tags=(
+                    [str(v) for v in (info.get("tags") or [])]
+                    if isinstance(info.get("tags"), list)
+                    else []
+                ),
                 evidence=[
                     Evidence(
                         source="nuclei",
-                        summary=f"Template {item.get('template-id', 'unknown')} matched at {matched_at}",
+                        summary=(
+                            f"Template {item.get('template-id', 'unknown')} "
+                            f"matched at {matched_at}"
+                        ),
                     )
                 ],
                 metadata={"template_id": item.get("template-id"), "type": item.get("type")},
