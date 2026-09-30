@@ -1,75 +1,67 @@
 # VAPTForge
 
-VAPTForge is a portfolio-grade **Vulnerability Assessment and Penetration Testing orchestration framework** for authorized environments. It combines custom web/TLS checks with established assessment tools, normalizes and correlates their output, persists the assessment lifecycle, and generates repeatable VAPT reports.
+VAPTForge is a portfolio-grade **Vulnerability Assessment and Penetration Testing orchestration platform** for authorized environments. It combines custom web/TLS assessment, established security scanners, finding correlation, persistent validation workflows, remediation retesting, and professional multi-format reporting.
 
 > **Authorized testing only.** Every scan requires explicit scope. Use VAPTForge only on systems you own or have written permission to assess.
 
-## Current release: v0.3.0
-
-VAPTForge now covers three layers of a real VAPT workflow:
+## Current release: v0.4.0
 
 ```text
 AUTHORIZED SCOPE
       |
       v
-DISCOVERY + WEB/TLS ASSESSMENT
+RECON + WEB/TLS ASSESSMENT
       |
       v
-NORMALIZATION + CORRELATION
+NORMALIZE + CORRELATE
       |
       v
-PERSISTED ASSESSMENT
-      |
-      +--> Evidence
-      +--> Validation Notes
-      +--> Status History
-      +--> CVSS / CWE / OWASP
+PERSIST + VALIDATE
       |
       v
-REPORTING -> REMEDIATION -> RETEST
+REMEDIATE + RETEST
+      |
+      v
+MARKDOWN / JSON / HTML / PDF
 ```
 
-## Capabilities
+## What VAPTForge demonstrates
 
-### Scope and orchestration
-
-- mandatory JSON scope file
-- exact hostname/IP and CIDR authorization
-- `shell=False` subprocess execution
-- scanner timeouts and conservative defaults
-- Markdown + JSON report output
-
-### Python-native assessment
+### Assessment engine
 
 - HTTP security headers
 - sensitive cookie attributes
 - CORS arbitrary-origin reflection
 - HTTP TRACE exposure
-- TLS certificate validation/expiry
-- deprecated negotiated TLS versions
-- weak negotiated cipher indicators
+- TLS validation, expiry, protocol and cipher observations
+- Nmap service enumeration
+- Nuclei template-based discovery
+- Nikto web-server assessment
+- ffuf bounded content discovery
+- httpx HTTP reconnaissance
 
-### External adapters
+### Safety and scope
 
-| Tool | Role | Parser |
-|---|---|---|
-| Nmap | service enumeration | XML |
-| Nuclei | template-based discovery | JSONL |
-| Nikto | web-server assessment | JSON |
-| ffuf | bounded content discovery | JSON |
-| httpx | HTTP reconnaissance | JSONL |
+- mandatory JSON authorization scope
+- exact hostname/IP and CIDR matching
+- no implicit wildcard expansion
+- structured subprocess arguments with `shell=False`
+- Nuclei DoS/fuzz/bruteforce tags excluded by default
+- ffuf rate, concurrency and runtime bounds
+- local vulnerable labs bound to loopback
+- findings remain DISCOVERED/POTENTIAL until explicit tester validation
 
-### Correlation and enrichment
+### Analysis
 
-- deterministic finding fingerprints
-- CVE + host + port cross-scanner correlation
+- common Pydantic finding model
+- deterministic fingerprints
+- cross-scanner CVE correlation
 - evidence deduplication
-- scanner provenance preservation
 - CVSS v3.1 base scoring
-- CVSS extraction from Nuclei classification
+- Nuclei CVSS normalization
 - curated CWE -> OWASP Top 10 2021 enrichment
 
-### Persistent assessment lifecycle
+### Assessment lifecycle
 
 SQLite persistence tracks:
 
@@ -80,32 +72,43 @@ SQLite persistence tracks:
 - validation notes
 - status history
 
-Lifecycle:
-
 ```text
 DISCOVERED -> POTENTIAL -> VERIFIED -> REMEDIATED -> RETESTED
                          \-> FALSE_POSITIVE
 ```
 
-Scanner output is never promoted to VERIFIED automatically.
+### Retesting
+
+Two persisted assessments can be compared as:
+
+- FIXED
+- PERSISTENT
+- CHANGED
+- NEW
+
+Use comparable scope/scanner profiles when treating absence as remediation evidence.
+
+### Reporting
+
+One assessment can produce:
+
+- Markdown
+- JSON
+- standalone HTML
+- PDF
+
+Reports include severity metrics, finding metadata, CVSS/mappings, evidence, and remediation guidance.
 
 ## Quick start
-
-### Install
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-```
-
-Check optional external tools:
-
-```bash
 vaptforge doctor
 ```
 
-### Start the authorized local lab
+Start the local training lab:
 
 ```bash
 docker compose -f labs/docker-compose.yml up -d
@@ -114,96 +117,52 @@ docker compose -f labs/docker-compose.yml up -d
 - Juice Shop: `http://127.0.0.1:3000`
 - DVWA: `http://127.0.0.1:4280`
 
-### Scope check
+Check scope:
 
 ```bash
 vaptforge scope-check   http://127.0.0.1:3000   --scope config/scope.example.json
 ```
 
-### Built-in scan
+Run and persist an assessment:
 
 ```bash
-vaptforge scan http://127.0.0.1:3000   --scope config/scope.example.json   --scanners http,tls   --output reports/builtin.md
+vaptforge scan http://127.0.0.1:3000   --scope config/scope.example.json   --scanners http,httpx,nmap,nuclei,nikto,ffuf   --db data/vaptforge.db   --output reports/initial.md   --json-output reports/initial.json   --html-output reports/initial.html   --pdf-output reports/initial.pdf
 ```
 
-### Persistent assessment
-
-```bash
-vaptforge scan http://127.0.0.1:3000   --scope config/scope.example.json   --scanners http,httpx,nmap,nuclei,nikto,ffuf   --db data/vaptforge.db   --output reports/initial.md   --json-output reports/initial.json
-```
-
-The command prints the new assessment UUID.
-
-Review it:
+Review and validate:
 
 ```bash
 vaptforge assessment-list --db data/vaptforge.db
 vaptforge finding-list <ASSESSMENT_ID> --db data/vaptforge.db
-```
 
-Validate a finding:
-
-```bash
 vaptforge finding-transition <FINDING_ID> verified   --db data/vaptforge.db   --note "Reproduced in the authorized lab."
 ```
 
-Attach evidence metadata:
+After remediation, create a second assessment and compare:
 
 ```bash
-vaptforge finding-evidence <FINDING_ID>   --db data/vaptforge.db   --source manual   --summary "Validation screenshot"   --attachment evidence/VF-001.png
+vaptforge retest <BASELINE_ID> <RETEST_ID>   --db data/vaptforge.db   --output reports/retest.md
 ```
 
-See [`docs/assessment-lifecycle.md`](docs/assessment-lifecycle.md).
+## Documentation
 
-## Architecture
+- [Architecture](docs/architecture.md)
+- [Methodology](docs/methodology.md)
+- [Assessment lifecycle](docs/assessment-lifecycle.md)
+- [Retesting and reporting](docs/retesting.md)
+- [Roadmap](ROADMAP.md)
+- [Security policy](SECURITY.md)
 
-Core layers:
-
-```text
-CLI / future API
-      |
-AuthorizedScope
-      |
-Scanner adapters + Python-native checks
-      |
-Machine-readable parsers
-      |
-Finding normalization
-      |
-Correlation + OWASP/CVSS enrichment
-      |
-SQLite AssessmentStore
-      |
-Reports / validation / future retest engine
-```
-
-More detail:
-
-- [`docs/architecture.md`](docs/architecture.md)
-- [`docs/methodology.md`](docs/methodology.md)
-- [`docs/assessment-lifecycle.md`](docs/assessment-lifecycle.md)
-
-## Safety model
-
-- no scan before authorization check
-- no implicit hostname wildcards
-- no shell command construction
-- Nuclei excludes DoS/fuzz/bruteforce tags by default
-- ffuf uses a small bundled wordlist with rate/concurrency/runtime limits
-- vulnerable Docker labs bind to loopback
-- defensive XML parsing via `defusedxml`
-- external scanner findings remain DISCOVERED/POTENTIAL until review
-
-## Testing
+## Testing and CI
 
 ```bash
-pytest
 ruff check .
+pytest
 ```
 
-CI runs on Python 3.12 and 3.13. A separate workflow runs `pip-audit`.
+GitHub Actions tests Python 3.12 and 3.13. A separate security workflow runs `pip-audit`.
 
-Coverage includes scope enforcement, all machine-readable parsers, HTTP/TLS controls, correlation, CVSS calculation, OWASP enrichment, reporting, and SQLite lifecycle persistence.
+Coverage includes authorization, scanner parsers, custom HTTP/TLS checks, correlation, CVSS, OWASP enrichment, SQLite lifecycle persistence, retest classification, HTML escaping, PDF generation, and report output.
 
 ## API
 
@@ -211,22 +170,20 @@ Coverage includes scope enforcement, all machine-readable parsers, HTTP/TLS cont
 uvicorn vaptforge.api.main:app --reload
 ```
 
-Current API is intentionally minimal (`GET /health`). The dashboard/API layer is planned after the retesting/reporting milestone.
+The current API exposes `GET /health`. The v0.5 milestone will expose the persisted assessment model through a dashboard/API.
+
+## Project boundaries
+
+VAPTForge is an **authorized assessment and validation platform**, not an exploitation or evasion framework. It is designed to demonstrate disciplined VAPT methodology: scope, discovery, validation, evidence, reporting, remediation, and retesting.
 
 ## Roadmap
 
-- **v0.1:** core engine, scope, Nmap/Nuclei, reporting
-- **v0.2:** web/TLS assessment, Nikto/ffuf/httpx, stronger correlation
-- **v0.3:** persistent lifecycle, validation evidence, CVSS, OWASP enrichment
-- **v0.4:** retest/delta engine + HTML/PDF professional reporting
+- **v0.1:** core orchestration
+- **v0.2:** web/TLS assessment + scanner integrations
+- **v0.3:** persistent validation lifecycle
+- **v0.4:** retesting + professional report formats
 - **v0.5:** dashboard and assessment API
-
-See [`ROADMAP.md`](ROADMAP.md).
-
-## Portfolio skills demonstrated
-
-VAPT methodology, reconnaissance, web security assessment, TLS analysis, secure Python engineering, scanner orchestration, parser design, finding normalization, correlation, CVSS, CWE/OWASP mapping, SQLite persistence, evidence handling, validation workflow, automated testing, CI, and dependency security.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT - see [LICENSE](LICENSE).

@@ -1,6 +1,6 @@
 # VAPTForge Roadmap
 
-## v0.1 — Core engine
+## v0.1 - Core engine
 
 - [x] Scope enforcement
 - [x] Finding model
@@ -13,23 +13,17 @@
 - [x] Local vulnerable lab
 - [x] CI and dependency audit
 
-## v0.2 — Web assessment
+## v0.2 - Web assessment
 
-- [x] Target normalization for host-based scanners
-- [x] Basic HTTP reconnaissance module
-- [x] Security-header checks
-- [x] Cookie security checks
-- [x] CORS checks
-- [x] HTTP method checks
+- [x] HTTP/cookie/CORS/method checks
 - [x] TLS checks
 - [x] Nikto adapter/parser
 - [x] ffuf adapter/parser
 - [x] httpx adapter/parser
 - [x] Cross-scanner CVE correlation
 - [x] Evidence deduplication
-- [x] Conservative POTENTIAL status for scanner observations
 
-## v0.3 — Assessment lifecycle
+## v0.3 - Assessment lifecycle
 
 - [x] SQLite persistence
 - [x] Assessment/asset entities
@@ -38,19 +32,19 @@
 - [x] Evidence attachment metadata
 - [x] CVSS v3.1 base scoring
 - [x] Curated CWE/OWASP enrichment
-- [x] Persistent-scan CLI workflow
-- [x] Assessment and finding CLI commands
+- [x] Persistent assessment CLI workflow
 
-## v0.4 — Retesting and reporting
+## v0.4 - Retesting and reporting
 
-- [ ] Before/after diff engine
-- [ ] Fixed/new/persistent classification
-- [ ] HTML report
-- [ ] PDF export
-- [ ] Executive summary metrics
-- [ ] Sanitized sample VAPT report
+- [x] Before/after delta engine
+- [x] Fixed/new/persistent/changed classification
+- [x] HTML report
+- [x] PDF export
+- [x] Executive summary metrics
+- [x] Sanitized sample VAPT report
+- [x] Retest CLI workflow
 
-## v0.5 — Dashboard
+## v0.5 - Dashboard
 
 - [ ] Assessment API
 - [ ] Dashboard summary
