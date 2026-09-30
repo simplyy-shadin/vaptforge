@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from io import BytesIO
 from pathlib import Path
 from xml.sax.saxutils import escape
 
@@ -19,17 +20,15 @@ from vaptforge.models.finding import Finding
 from vaptforge.reporting.metrics import finding_metrics
 
 
-def write_pdf_report(
-    path: str | Path,
+def render_pdf_bytes(
     assessment_name: str,
     target: str,
     findings: list[Finding],
-) -> None:
-    output = Path(path)
-    output.parent.mkdir(parents=True, exist_ok=True)
+) -> bytes:
+    buffer = BytesIO()
     styles = getSampleStyleSheet()
     doc = SimpleDocTemplate(
-        str(output),
+        buffer,
         pagesize=A4,
         leftMargin=18 * mm,
         rightMargin=18 * mm,
@@ -145,3 +144,15 @@ def write_pdf_report(
         story.append(Spacer(1, 10))
 
     doc.build(story)
+    return buffer.getvalue()
+
+
+def write_pdf_report(
+    path: str | Path,
+    assessment_name: str,
+    target: str,
+    findings: list[Finding],
+) -> None:
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(render_pdf_bytes(assessment_name, target, findings))
