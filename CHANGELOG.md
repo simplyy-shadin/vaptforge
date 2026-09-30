@@ -2,6 +2,13 @@
 
 All notable VAPTForge changes are documented here. The project follows semantic versioning for portfolio milestones.
 
+## [0.8.3] - 2026-09-30
+
+### Fixed
+- Nmap parsing now distinguishes probed/product-backed service identification from low-confidence port-table service hints.
+- Port-table guesses such as `ppp` on TCP/3000 are no longer presented as verified service names; the hint, method, and confidence remain available in finding metadata and evidence.
+- Nmap network observations are tagged as `network-exposure` for clearer downstream handling.
+
 ## [0.8.2] - 2026-09-30
 
 ### Fixed
