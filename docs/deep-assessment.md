@@ -11,7 +11,7 @@ The `deep` profile combines the normal VAPTForge scanner stack with the built-in
 - bounded same-origin crawling
 - reachable-page inventory
 - HTML form inventory
-- GET parameter discovery
+- GET parameter discovery\n- static same-origin JavaScript bundle analysis for API-like routes and query parameters
 - benign reflected-input analysis for potential XSS sinks
 - single-quote differential analysis for database error behavior
 - finding confidence metadata
@@ -36,7 +36,7 @@ The native engine intentionally does **not**:
 - crawl to another origin
 - automatically mark a finding VERIFIED
 
-Crawling is bounded to 40 pages and depth 2 by default. Active analysis is bounded to 30 discovered GET parameters. Paths associated with logout, deletion, revocation, or similar state-changing actions are skipped.
+Crawling is bounded to 40 pages and depth 2 by default. JavaScript analysis is bounded to 12 same-origin scripts, 1 MB per script, and 100 extracted API-like endpoints. JavaScript is never executed. Active analysis is bounded to 30 discovered GET parameters. Paths associated with logout, deletion, revocation, or similar state-changing actions are skipped.
 
 ## Confidence and lifecycle
 

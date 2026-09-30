@@ -72,7 +72,7 @@
 - [x] Confidence surfaced in CLI, dashboard, and reports
 - [x] Deep-assessment methodology and safety documentation
 - [ ] Authenticated browser/session-aware crawling
-- [ ] JavaScript endpoint extraction
+- [x] JavaScript endpoint extraction
 - [ ] Browser-assisted XSS context validation
 - [ ] Additional safe native checks for redirects and API-specific input handling
 

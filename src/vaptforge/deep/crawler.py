@@ -8,6 +8,7 @@ from urllib.parse import parse_qsl, urljoin, urlsplit, urlunsplit
 import httpx
 
 from vaptforge.core.targets import http_url_from_target
+from vaptforge.deep.javascript import extract_javascript_endpoints
 from vaptforge.models.scope import AuthorizedScope
 
 UNSAFE_GET_MARKERS = (
@@ -41,6 +42,8 @@ class CrawlResult:
     pages: list[str] = field(default_factory=list)
     parameters: list[DiscoveredParameter] = field(default_factory=list)
     forms: list[DiscoveredForm] = field(default_factory=list)
+    script_sources: list[str] = field(default_factory=list)
+    javascript_endpoints: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
 
@@ -48,6 +51,7 @@ class _HTMLDiscoveryParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.links: list[str] = []
+        self.scripts: list[str] = []
         self.forms: list[tuple[str, str, tuple[str, ...]]] = []
         self._form_action: str | None = None
         self._form_method = "get"
@@ -59,6 +63,10 @@ class _HTMLDiscoveryParser(HTMLParser):
 
         if tag == "a" and values.get("href"):
             self.links.append(str(values["href"]))
+            return
+
+        if tag == "script" and values.get("src"):
+            self.scripts.append(str(values["src"]))
             return
 
         if tag == "form":
@@ -107,14 +115,26 @@ def _safe_same_origin_url(candidate: str, origin: tuple[str, str, int | None]) -
     return not any(marker in lowered_path for marker in UNSAFE_GET_MARKERS)
 
 
-def _query_parameters(url: str) -> list[DiscoveredParameter]:
+def _query_parameters(url: str, *, source: str = "query") -> list[DiscoveredParameter]:
     parsed = urlsplit(url)
     endpoint = urlunsplit((parsed.scheme, parsed.netloc, parsed.path or "/", "", ""))
     return [
-        DiscoveredParameter(endpoint=endpoint, name=name, source="query", value=value)
+        DiscoveredParameter(endpoint=endpoint, name=name, source=source, value=value)
         for name, value in parse_qsl(parsed.query, keep_blank_values=True)
         if name
     ]
+
+
+def _append_parameter(
+    result: CrawlResult,
+    seen: set[tuple[str, str, str]],
+    parameter: DiscoveredParameter,
+) -> None:
+    key = (parameter.endpoint, parameter.name, parameter.source)
+    if key in seen:
+        return
+    seen.add(key)
+    result.parameters.append(parameter)
 
 
 def crawl_target(
@@ -124,8 +144,11 @@ def crawl_target(
     client: httpx.Client | None = None,
     max_pages: int = 40,
     max_depth: int = 2,
+    max_scripts: int = 12,
+    max_script_bytes: int = 1_000_000,
+    max_javascript_endpoints: int = 100,
 ) -> CrawlResult:
-    """Crawl bounded, same-origin GET pages and inventory links, forms, and parameters."""
+    """Crawl bounded same-origin content and statically inventory JavaScript API routes."""
     scope.require_authorized(target)
     start_url = _normalize_url(http_url_from_target(target))
     start_origin = _origin(start_url)
@@ -134,6 +157,8 @@ def crawl_target(
     visited: set[str] = set()
     seen_parameters: set[tuple[str, str, str]] = set()
     seen_forms: set[tuple[str, str, tuple[str, ...]]] = set()
+    seen_scripts: set[str] = set()
+    seen_javascript_endpoints: set[str] = set()
 
     owns_client = client is None
     if client is None:
@@ -155,10 +180,7 @@ def crawl_target(
             result.pages.append(url)
 
             for parameter in _query_parameters(url):
-                key = (parameter.endpoint, parameter.name, parameter.source)
-                if key not in seen_parameters:
-                    seen_parameters.add(key)
-                    result.parameters.append(parameter)
+                _append_parameter(result, seen_parameters, parameter)
 
             try:
                 response = client.get(url)
@@ -206,16 +228,64 @@ def crawl_target(
                     )
                 if method == "get":
                     for name in parameters:
-                        key = (action_url, name, "get-form")
-                        if key not in seen_parameters:
-                            seen_parameters.add(key)
-                            result.parameters.append(
-                                DiscoveredParameter(
-                                    endpoint=action_url,
-                                    name=name,
-                                    source="get-form",
-                                )
-                            )
+                        _append_parameter(
+                            result,
+                            seen_parameters,
+                            DiscoveredParameter(
+                                endpoint=action_url,
+                                name=name,
+                                source="get-form",
+                            ),
+                        )
+
+            for script_src in parser.scripts:
+                if len(seen_scripts) >= max_scripts:
+                    break
+                script_url = _normalize_url(urljoin(url, script_src))
+                if script_url in seen_scripts:
+                    continue
+                if not _safe_same_origin_url(script_url, start_origin):
+                    continue
+
+                scope.require_authorized(script_url)
+                seen_scripts.add(script_url)
+                result.script_sources.append(script_url)
+
+                try:
+                    script_response = client.get(script_url)
+                except httpx.HTTPError as exc:
+                    result.errors.append(f"{script_url}: {type(exc).__name__}")
+                    continue
+
+                if len(script_response.content) > max_script_bytes:
+                    result.errors.append(f"{script_url}: script exceeds analysis size limit")
+                    continue
+
+                try:
+                    script_text = script_response.text
+                except UnicodeError:
+                    result.errors.append(f"{script_url}: unable to decode JavaScript")
+                    continue
+
+                remaining = max_javascript_endpoints - len(result.javascript_endpoints)
+                if remaining <= 0:
+                    continue
+
+                endpoints = extract_javascript_endpoints(
+                    script_text,
+                    base_url=start_url,
+                    max_endpoints=remaining,
+                )
+                for endpoint in endpoints:
+                    if endpoint in seen_javascript_endpoints:
+                        continue
+                    if not _safe_same_origin_url(endpoint, start_origin):
+                        continue
+                    seen_javascript_endpoints.add(endpoint)
+                    result.javascript_endpoints.append(endpoint)
+                    for parameter in _query_parameters(endpoint, source="javascript"):
+                        _append_parameter(result, seen_parameters, parameter)
+
     finally:
         if owns_client:
             client.close()

@@ -192,8 +192,9 @@ def attack_surface_finding(target: str, crawl: CrawlResult) -> Finding:
         source="vaptforge-deep",
         confidence=FindingConfidence.HIGH,
         description=(
-            "VAPTForge performed a bounded same-origin crawl to inventory reachable pages, "
-            "forms, and GET parameters before safe active parameter checks."
+            "VAPTForge performed a bounded same-origin crawl and static JavaScript analysis "
+            "to inventory reachable pages, forms, API-like routes, and GET parameters before "
+            "safe active parameter checks."
         ),
         location=http_url_from_target(target),
         evidence=[
@@ -202,6 +203,8 @@ def attack_surface_finding(target: str, crawl: CrawlResult) -> Finding:
                 summary=(
                     f"pages={len(crawl.pages)}; parameters={len(crawl.parameters)}; "
                     f"forms={len(crawl.forms)} (GET={get_forms}, POST={post_forms}); "
+                    f"scripts={len(crawl.script_sources)}; "
+                    f"javascript_endpoints={len(crawl.javascript_endpoints)}; "
                     f"crawl_errors={len(crawl.errors)}"
                 ),
             )
@@ -225,6 +228,8 @@ def attack_surface_finding(target: str, crawl: CrawlResult) -> Finding:
                 }
                 for form in crawl.forms
             ],
+            "script_sources": crawl.script_sources,
+            "javascript_endpoints": crawl.javascript_endpoints,
             "crawl_errors": crawl.errors,
         },
     )
@@ -243,6 +248,8 @@ def _parameter_contexts(crawl: CrawlResult) -> list[tuple[DiscoveredParameter, d
             continue
         seen.add(key)
         if any(marker in item.name.lower() for marker in UNSAFE_PARAMETER_MARKERS):
+            continue
+        if "{" in item.endpoint or "}" in item.endpoint:
             continue
         contexts.append((item, dict(groups[(item.endpoint, item.source)])))
     return contexts
