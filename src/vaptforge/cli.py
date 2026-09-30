@@ -13,6 +13,7 @@ from vaptforge.correlation.engine import correlate_findings
 from vaptforge.models.finding import Finding
 from vaptforge.models.scope import AuthorizedScope
 from vaptforge.reporting.markdown import render_markdown_report
+from vaptforge.scanners.base import Scanner
 from vaptforge.scanners.ffuf import FfufScanner
 from vaptforge.scanners.http_security import HttpSecurityScanner
 from vaptforge.scanners.httpx_probe import HttpxScanner
@@ -25,7 +26,7 @@ app = typer.Typer(no_args_is_help=True, help="Authorized VAPT orchestration and 
 console = Console()
 
 
-def _scanner_registry() -> dict[str, object]:
+def _scanner_registry() -> dict[str, Scanner]:
     return {
         "http": HttpSecurityScanner(),
         "tls": TlsSecurityScanner(),
@@ -93,8 +94,7 @@ def scan(
     findings: list[Finding] = []
     for name in selected:
         console.print(f"[cyan]Running {name}[/cyan] against {target}")
-        scanner = registry[name]
-        findings.extend(scanner.scan(target, scope))
+        findings.extend(registry[name].scan(target, scope))
 
     findings = correlate_findings(findings)
     output.parent.mkdir(parents=True, exist_ok=True)
