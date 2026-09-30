@@ -1,0 +1,14 @@
+{
+  "assessment_name": "Local Vulnerable Lab",
+  "authorization_reference": "Locally owned Docker lab for security testing",
+  "targets": [
+    {
+      "value": "127.0.0.1",
+      "description": "Loopback services used by the Docker lab"
+    },
+    {
+      "value": "172.20.0.0/24",
+      "description": "Optional isolated lab network"
+    }
+  ]
+}

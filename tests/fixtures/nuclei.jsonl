@@ -1,0 +1,1 @@
+{"template-id":"missing-csp","info":{"name":"Content Security Policy Missing","severity":"medium","description":"CSP header is missing.","classification":{"cwe-id":["CWE-693"]},"reference":["https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP"],"tags":["headers","misconfig"]},"host":"http://127.0.0.1:3000","matched-at":"http://127.0.0.1:3000/","type":"http"}
