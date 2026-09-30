@@ -38,6 +38,7 @@ class Evidence(BaseModel):
     source: str
     summary: str
     raw: str | None = None
+    attachment_path: str | None = None
 
 
 class AssetRef(BaseModel):
@@ -63,6 +64,8 @@ class Finding(BaseModel):
     tags: list[str] = Field(default_factory=list)
     evidence: list[Evidence] = Field(default_factory=list)
     remediation: str | None = None
+    cvss_vector: str | None = None
+    cvss_score: float | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @property

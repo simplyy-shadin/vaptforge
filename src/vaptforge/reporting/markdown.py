@@ -56,13 +56,22 @@ def render_markdown_report(assessment_name: str, target: str, findings: list[Fin
                 f"- **Fingerprint:** `{finding.fingerprint}`",
             ]
         )
+        if finding.cvss_score is not None:
+            lines.append(f"- **CVSS:** {finding.cvss_score:.1f}")
+        if finding.cvss_vector:
+            lines.append(f"- **CVSS Vector:** `{finding.cvss_vector}`")
         if finding.cves:
             lines.append(f"- **CVE:** {', '.join(finding.cves)}")
         if finding.cwes:
             lines.append(f"- **CWE:** {', '.join(finding.cwes)}")
+        if finding.owasp:
+            lines.append(f"- **OWASP:** {', '.join(finding.owasp)}")
         lines.extend(["", finding.description or "No description supplied.", "", "**Evidence**"])
         for evidence in finding.evidence:
-            lines.append(f"- `{evidence.source}` — {evidence.summary}")
+            detail = f"- `{evidence.source}` — {evidence.summary}"
+            if evidence.attachment_path:
+                detail += f" (attachment: `{evidence.attachment_path}`)"
+            lines.append(detail)
         if finding.remediation:
             lines.extend(["", "**Remediation**", "", finding.remediation])
         lines.append("")
