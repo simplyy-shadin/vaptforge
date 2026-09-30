@@ -47,6 +47,7 @@ class FfufScanner(Scanner):
                         "120",
                         "-fc",
                         "404",
+                        "-ac",
                         "-noninteractive",
                     ],
                     timeout=180,
