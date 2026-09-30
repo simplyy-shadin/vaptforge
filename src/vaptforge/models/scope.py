@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+HEADER_NAME_RE = re.compile(r"^[A-Za-z0-9!#$%&'*+.^_`|~-]+$")
+BLOCKED_SESSION_HEADERS = {"host", "content-length", "transfer-encoding"}
 
 
 class ScopeEntry(BaseModel):
@@ -21,10 +26,61 @@ class ScopeEntry(BaseModel):
         return value
 
 
+class SessionAuth(BaseModel):
+    """References authentication values through environment variables only."""
+
+    cookie_env: str | None = None
+    authorization_env: str | None = None
+    headers_env: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("cookie_env", "authorization_env")
+    @classmethod
+    def valid_optional_env_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not ENV_NAME_RE.fullmatch(value):
+            raise ValueError(
+                "session environment variable names must be valid shell variable names"
+            )
+        return value
+
+    @field_validator("headers_env")
+    @classmethod
+    def valid_header_environment_map(cls, value: dict[str, str]) -> dict[str, str]:
+        cleaned: dict[str, str] = {}
+        for header, env_name in value.items():
+            header = header.strip()
+            env_name = env_name.strip()
+            if not HEADER_NAME_RE.fullmatch(header):
+                raise ValueError(f"invalid HTTP header name: {header}")
+            if header.lower() in BLOCKED_SESSION_HEADERS:
+                raise ValueError(f"session header cannot override {header}")
+            if not ENV_NAME_RE.fullmatch(env_name):
+                raise ValueError(
+                    "session environment variable names must be valid shell variable names"
+                )
+            cleaned[header] = env_name
+        return cleaned
+
+    @model_validator(mode="after")
+    def require_reference(self) -> SessionAuth:
+        if not self.cookie_env and not self.authorization_env and not self.headers_env:
+            raise ValueError(
+                "session configuration must reference at least one environment variable"
+            )
+        return self
+
+    def environment_references(self) -> tuple[str, ...]:
+        refs = [self.cookie_env, self.authorization_env, *self.headers_env.values()]
+        return tuple(dict.fromkeys(item for item in refs if item))
+
+
 class AuthorizedScope(BaseModel):
     assessment_name: str
     authorization_reference: str
     targets: list[ScopeEntry] = Field(min_length=1)
+    session: SessionAuth | None = None
 
     @classmethod
     def from_json_file(cls, path: str | Path) -> AuthorizedScope:

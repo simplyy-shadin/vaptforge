@@ -10,7 +10,7 @@ VAPTForge is a portfolio-grade **Vulnerability Assessment and Penetration Testin
 
 > **Authorized testing only.** Every scan requires explicit scope. Use VAPTForge only on systems you own or have written permission to assess.
 
-## Current release: v0.9.1
+## Current release: v0.9.2
 
 ```text
 AUTHORIZED SCOPE
@@ -41,7 +41,7 @@ MD / JSON / HTML / PDF      FILTER / EXPORT / HISTORY
 
 **Assessment**
 - Python-native HTTP header, cookie, CORS, method, and TLS checks
-- native Deep Web engine with bounded same-origin crawling, static JavaScript API-route extraction, page/form/GET-parameter inventory, benign reflection analysis, and SQL-error differential checks
+- native Deep Web engine with bounded same-origin crawling, static JavaScript API-route extraction, environment-backed authenticated sessions, page/form/GET-parameter inventory, benign reflection analysis, and SQL-error differential checks
 - Nmap, Nuclei, Nikto, ffuf, and ProjectDiscovery httpx adapters
 - machine-readable parser layer
 - pluggable scanner SDK via `vaptforge.scanners` Python entry points

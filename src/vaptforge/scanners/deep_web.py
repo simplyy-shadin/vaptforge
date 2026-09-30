@@ -8,6 +8,7 @@ import httpx
 
 from vaptforge.core.targets import http_url_from_target
 from vaptforge.deep.crawler import CrawlResult, DiscoveredParameter, crawl_target
+from vaptforge.deep.session import resolve_session_headers
 from vaptforge.models.finding import (
     AssetRef,
     Evidence,
@@ -262,13 +263,20 @@ class DeepWebScanner(Scanner):
         scope.require_authorized(target)
         findings: list[Finding] = []
 
+        request_headers = {
+            "User-Agent": "VAPTForge/0.9 authorized-deep-assessment",
+            **resolve_session_headers(scope),
+        }
+
         with httpx.Client(
             timeout=10.0,
             follow_redirects=False,
-            headers={"User-Agent": "VAPTForge/0.9 authorized-deep-assessment"},
+            headers=request_headers,
         ) as client:
             crawl = crawl_target(target, scope, client=client)
-            findings.append(attack_surface_finding(target, crawl))
+            surface = attack_surface_finding(target, crawl)
+            surface.metadata["authenticated_session"] = bool(scope.session)
+            findings.append(surface)
 
             contexts = _parameter_contexts(crawl)[:MAX_ACTIVE_PARAMETER_CHECKS]
             for item, baseline_params in contexts:

@@ -111,3 +111,68 @@ The goal is to make VAPTForge useful to a penetration tester without hiding impo
 7. retest after remediation
 
 This keeps the tool useful for real assessment workflow while making false-positive handling and analyst responsibility explicit.
+
+
+## Authenticated session-aware Deep scanning
+
+Deep mode can reuse an already-authorized application session without storing the cookie or token in the VAPTForge database.
+
+The scope contains only **environment-variable names**:
+
+```json
+{
+  "assessment_name": "Authenticated DVWA Lab",
+  "authorization_reference": "Locally owned Docker lab",
+  "targets": [{"value": "127.0.0.1"}],
+  "session": {
+    "cookie_env": "VAPTFORGE_DVWA_COOKIE"
+  }
+}
+```
+
+Set the actual value only in the process environment. Example for PowerShell after signing in to your own DVWA lab:
+
+```powershell
+$env:VAPTFORGE_DVWA_COOKIE="security=low; PHPSESSID=<your-lab-session-id>"
+python -m vaptforge.cli session-check --scope config/scope.authenticated.example.json
+python -m vaptforge.cli start
+```
+
+The worker inherits the environment from the launcher. The secret value is resolved only when the native Deep HTTP client sends requests. Scope/job serialization stores `VAPTFORGE_DVWA_COOKIE`, not its value.
+
+Bearer/API sessions are also supported without persistence:
+
+```json
+"session": {
+  "authorization_env": "VAPTFORGE_AUTHORIZATION",
+  "headers_env": {
+    "X-CSRF-Token": "VAPTFORGE_CSRF_TOKEN"
+  }
+}
+```
+
+Do not put raw cookies, bearer tokens, API keys, or CSRF tokens directly in scope JSON. Clear temporary environment variables after the assessment if appropriate.
+
+
+## Session-aware authenticated crawling
+
+Deep mode can reuse an authorized application session while keeping secret values out of VAPTForge persistence. A scope stores only environment-variable references:
+
+```json
+{
+  "session": {
+    "cookie_env": "VAPTFORGE_SESSION_COOKIE"
+  }
+}
+```
+
+Set the actual value in the process environment, then verify readiness:
+
+```powershell
+$env:VAPTFORGE_SESSION_COOKIE="<authorized-session-cookie>"
+python -m vaptforge.cli session-check --scope config/scope.authenticated.example.json
+```
+
+The launcher/worker inherits the environment. VAPTForge resolves the value only when the native Deep HTTP client makes requests. Scope JSON and SQLite job state contain the environment-variable name, not the secret value.
+
+Authorization-header and custom-header references are also supported through `authorization_env` and `headers_env`. Missing configured variables fail closed. Do not place raw session values directly in scope files.

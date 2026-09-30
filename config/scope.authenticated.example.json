@@ -1,0 +1,13 @@
+{
+  "assessment_name": "Authenticated DVWA Lab",
+  "authorization_reference": "Locally owned Docker lab for authorized security testing",
+  "targets": [
+    {
+      "value": "127.0.0.1",
+      "description": "Loopback-hosted DVWA lab"
+    }
+  ],
+  "session": {
+    "cookie_env": "VAPTFORGE_DVWA_COOKIE"
+  }
+}
