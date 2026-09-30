@@ -14,6 +14,7 @@ from vaptforge.models.assessment import (
     ValidationNoteRecord,
 )
 from vaptforge.models.finding import Evidence, Finding, FindingStatus
+from vaptforge.persistence.migrations import apply_migrations, current_schema_version
 from vaptforge.retest.engine import RetestResult
 
 ALLOWED_TRANSITIONS: dict[FindingStatus, set[FindingStatus]] = {
@@ -60,7 +61,7 @@ class AssessmentStore:
         self.connection = sqlite3.connect(self.path)
         self.connection.row_factory = sqlite3.Row
         self.connection.execute("PRAGMA foreign_keys = ON")
-        self._create_schema()
+        apply_migrations(self.connection)
 
     def close(self) -> None:
         self.connection.close()
@@ -71,82 +72,9 @@ class AssessmentStore:
     def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
         self.close()
 
-    def _create_schema(self) -> None:
-        self.connection.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS assessments (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                authorization_reference TEXT NOT NULL,
-                target TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS assets (
-                id TEXT PRIMARY KEY,
-                assessment_id TEXT NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
-                target TEXT NOT NULL,
-                host TEXT,
-                port INTEGER,
-                protocol TEXT,
-                service TEXT,
-                UNIQUE(assessment_id, target, host, port, protocol, service)
-            );
-
-            CREATE TABLE IF NOT EXISTS findings (
-                id TEXT PRIMARY KEY,
-                assessment_id TEXT NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
-                asset_id TEXT REFERENCES assets(id) ON DELETE SET NULL,
-                fingerprint TEXT NOT NULL,
-                payload_json TEXT NOT NULL,
-                status TEXT NOT NULL,
-                severity INTEGER NOT NULL,
-                cvss_vector TEXT,
-                cvss_score REAL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                UNIQUE(assessment_id, fingerprint)
-            );
-
-            CREATE TABLE IF NOT EXISTS evidence (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                finding_id TEXT NOT NULL REFERENCES findings(id) ON DELETE CASCADE,
-                source TEXT NOT NULL,
-                summary TEXT NOT NULL,
-                raw TEXT,
-                attachment_path TEXT,
-                created_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS status_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                finding_id TEXT NOT NULL REFERENCES findings(id) ON DELETE CASCADE,
-                old_status TEXT NOT NULL,
-                new_status TEXT NOT NULL,
-                note TEXT,
-                changed_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS validation_notes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                finding_id TEXT NOT NULL REFERENCES findings(id) ON DELETE CASCADE,
-                note TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS retest_runs (
-                id TEXT PRIMARY KEY,
-                before_assessment_id TEXT NOT NULL
-                    REFERENCES assessments(id) ON DELETE CASCADE,
-                after_assessment_id TEXT NOT NULL
-                    REFERENCES assessments(id) ON DELETE CASCADE,
-                result_json TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            );
-            """
-        )
-        self.connection.commit()
+    @property
+    def schema_version(self) -> int:
+        return current_schema_version(self.connection)
 
     def create_assessment(
         self,

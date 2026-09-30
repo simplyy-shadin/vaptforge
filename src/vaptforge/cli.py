@@ -13,35 +13,28 @@ from vaptforge.correlation.engine import correlate_findings
 from vaptforge.enrichment.owasp import enrich_owasp
 from vaptforge.models.finding import Evidence, Finding, FindingStatus
 from vaptforge.models.scope import AuthorizedScope
+from vaptforge.parsers.sarif import parse_sarif
+from vaptforge.persistence.migrations import SCHEMA_VERSION
 from vaptforge.persistence.store import AssessmentStore, InvalidStatusTransition
 from vaptforge.reporting.html import render_html_report
 from vaptforge.reporting.markdown import render_markdown_report
 from vaptforge.reporting.pdf import write_pdf_report
 from vaptforge.reporting.retest_markdown import render_retest_markdown
+from vaptforge.reporting.sarif import write_sarif
+from vaptforge.reporting.sbom import write_sbom
 from vaptforge.retest.engine import compare_findings
 from vaptforge.scanners.base import Scanner
-from vaptforge.scanners.ffuf import FfufScanner
-from vaptforge.scanners.http_security import HttpSecurityScanner
-from vaptforge.scanners.httpx_probe import HttpxScanner
-from vaptforge.scanners.nikto import NiktoScanner
-from vaptforge.scanners.nmap import NmapScanner
-from vaptforge.scanners.nuclei import NucleiScanner
-from vaptforge.scanners.tls_security import TlsSecurityScanner
+from vaptforge.scanners.registry import ScannerPluginError, discover_scanners
 
 app = typer.Typer(no_args_is_help=True, help="Authorized VAPT orchestration and reporting.")
 console = Console()
 
 
 def _scanner_registry() -> dict[str, Scanner]:
-    return {
-        "http": HttpSecurityScanner(),
-        "tls": TlsSecurityScanner(),
-        "httpx": HttpxScanner(),
-        "nmap": NmapScanner(),
-        "nuclei": NucleiScanner(),
-        "nikto": NiktoScanner(),
-        "ffuf": FfufScanner(),
-    }
+    try:
+        return discover_scanners()
+    except ScannerPluginError as exc:
+        raise typer.BadParameter(str(exc)) from exc
 
 
 @app.command()
@@ -88,6 +81,7 @@ def scan(
     json_output: Path | None = typer.Option(None, "--json-output"),
     html_output: Path | None = typer.Option(None, "--html-output"),
     pdf_output: Path | None = typer.Option(None, "--pdf-output"),
+    sarif_output: Path | None = typer.Option(None, "--sarif-output"),
     database: Path | None = typer.Option(None, "--db"),
     assessment_id: str | None = typer.Option(None, "--assessment-id"),
 ) -> None:
@@ -127,6 +121,8 @@ def scan(
         )
     if pdf_output:
         write_pdf_report(pdf_output, scope.assessment_name, target, findings)
+    if sarif_output:
+        write_sarif(sarif_output, findings)
 
     if database:
         with AssessmentStore(database) as store:
@@ -145,6 +141,56 @@ def scan(
 
     console.print(f"[green]Completed[/green] - {len(findings)} normalized findings")
     console.print(f"Markdown report: {output}")
+
+
+@app.command("scanner-list")
+def scanner_list() -> None:
+    """List built-in and externally registered scanner plugins."""
+    registry = _scanner_registry()
+    table = Table(title="VAPTForge Scanner Registry")
+    table.add_column("Name")
+    table.add_column("Implementation")
+    for name, scanner in sorted(registry.items()):
+        table.add_row(name, f"{scanner.__class__.__module__}.{scanner.__class__.__name__}")
+    console.print(table)
+
+
+@app.command("db-status")
+def db_status(
+    database: Path = typer.Option(Path("vaptforge.db"), "--db"),
+) -> None:
+    """Show the SQLite schema version after applying safe migrations."""
+    with AssessmentStore(database) as store:
+        console.print(
+            f"Database schema: {store.schema_version}/{SCHEMA_VERSION} "
+            f"({database})"
+        )
+
+
+@app.command("sarif-import")
+def sarif_import(
+    sarif_file: Path = typer.Argument(..., exists=True, readable=True),
+    target: str = typer.Option("imported://sarif", "--target"),
+    output: Path = typer.Option(Path("sarif-findings.json"), "--output"),
+) -> None:
+    """Normalize a SARIF 2.1.0 document into VAPTForge findings JSON."""
+    document = json.loads(sarif_file.read_text(encoding="utf-8"))
+    findings = parse_sarif(document, default_target=target)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps([item.model_dump(mode="json") for item in findings], indent=2),
+        encoding="utf-8",
+    )
+    console.print(f"[green]Imported[/green] {len(findings)} SARIF findings -> {output}")
+
+
+@app.command("sbom")
+def sbom(
+    output: Path = typer.Option(Path("vaptforge.cdx.json"), "--output"),
+) -> None:
+    """Generate a CycloneDX JSON SBOM for the installed VAPTForge runtime."""
+    write_sbom(output)
+    console.print(f"[green]SBOM written[/green] -> {output}")
 
 
 @app.command("assessment-list")

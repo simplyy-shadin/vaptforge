@@ -46,11 +46,12 @@
 
 ## Future v1.0 hardening
 
-- [ ] Database migrations/versioning
+- [x] Database migrations/versioning
 - [ ] Role-based multi-user authentication
 - [ ] Background job queue for long-running scans
-- [ ] Pluggable scanner SDK
-- [ ] SARIF import/export
-- [ ] SBOM and signed release artifacts
+- [x] Pluggable scanner SDK
+- [x] SARIF import/export
+- [x] SBOM generation
+- [ ] Signed release artifacts
 - [ ] Browser-based evidence upload
 - [ ] Deployment reference architecture
