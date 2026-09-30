@@ -6,6 +6,7 @@ from vaptforge.deep.session import (
     SessionConfigurationError,
     resolve_session_headers,
     session_environment_status,
+    verify_session,
 )
 from vaptforge.models.scope import AuthorizedScope, ScopeEntry, SessionAuth
 
@@ -64,3 +65,77 @@ def test_session_header_configuration_blocks_transport_headers() -> None:
 def test_session_configuration_requires_an_environment_reference() -> None:
     with pytest.raises(ValueError, match="at least one environment variable"):
         SessionAuth()
+
+
+
+def test_verify_session_requires_expected_status_and_marker(monkeypatch) -> None:
+    monkeypatch.setenv("VAPTFORGE_VERIFY_COOKIE", "session=test")
+    scope = AuthorizedScope(
+        assessment_name="Authenticated lab",
+        authorization_reference="AUTH-1",
+        targets=[ScopeEntry(value="127.0.0.1")],
+        session=SessionAuth(
+            cookie_env="VAPTFORGE_VERIFY_COOKIE",
+            verify_url="http://127.0.0.1:4280/index.php",
+            verify_status=200,
+            success_contains="Authenticated Area",
+        ),
+    )
+
+    def handler(request):
+        return __import__("httpx").Response(
+            200,
+            text="<html>Authenticated Area</html>",
+            request=request,
+        )
+
+    httpx = __import__("httpx")
+    with httpx.Client(
+        transport=httpx.MockTransport(handler),
+        headers=resolve_session_headers(scope),
+    ) as client:
+        state = verify_session(client, scope, "http://127.0.0.1:4280")
+
+    assert state == "verified"
+
+
+def test_verify_session_fails_when_marker_is_missing(monkeypatch) -> None:
+    monkeypatch.setenv("VAPTFORGE_VERIFY_COOKIE", "session=test")
+    scope = AuthorizedScope(
+        assessment_name="Authenticated lab",
+        authorization_reference="AUTH-1",
+        targets=[ScopeEntry(value="127.0.0.1")],
+        session=SessionAuth(
+            cookie_env="VAPTFORGE_VERIFY_COOKIE",
+            verify_url="http://127.0.0.1:4280/index.php",
+            success_contains="Authenticated Area",
+        ),
+    )
+
+    httpx = __import__("httpx")
+    with httpx.Client(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, text="Login", request=request)
+        ),
+        headers=resolve_session_headers(scope),
+    ) as client:
+        with pytest.raises(SessionConfigurationError, match="success marker"):
+            verify_session(client, scope, "http://127.0.0.1:4280")
+
+
+def test_verify_session_rejects_cross_origin_probe(monkeypatch) -> None:
+    monkeypatch.setenv("VAPTFORGE_VERIFY_COOKIE", "session=test")
+    scope = AuthorizedScope(
+        assessment_name="Authenticated lab",
+        authorization_reference="AUTH-1",
+        targets=[ScopeEntry(value="127.0.0.1")],
+        session=SessionAuth(
+            cookie_env="VAPTFORGE_VERIFY_COOKIE",
+            verify_url="http://127.0.0.1:8000/index.php",
+        ),
+    )
+
+    httpx = __import__("httpx")
+    with httpx.Client(headers=resolve_session_headers(scope)) as client:
+        with pytest.raises(SessionConfigurationError, match="same origin"):
+            verify_session(client, scope, "http://127.0.0.1:4280")
