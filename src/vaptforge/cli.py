@@ -14,7 +14,11 @@ from vaptforge.enrichment.owasp import enrich_owasp
 from vaptforge.models.finding import Evidence, Finding, FindingStatus
 from vaptforge.models.scope import AuthorizedScope
 from vaptforge.persistence.store import AssessmentStore, InvalidStatusTransition
+from vaptforge.reporting.html import render_html_report
 from vaptforge.reporting.markdown import render_markdown_report
+from vaptforge.reporting.pdf import write_pdf_report
+from vaptforge.reporting.retest_markdown import render_retest_markdown
+from vaptforge.retest.engine import compare_findings
 from vaptforge.scanners.base import Scanner
 from vaptforge.scanners.ffuf import FfufScanner
 from vaptforge.scanners.http_security import HttpSecurityScanner
@@ -65,9 +69,9 @@ def scope_check(
     """Verify that a target is explicitly authorized by a scope file."""
     scope = AuthorizedScope.from_json_file(scope_file)
     if scope.is_authorized(target):
-        console.print(f"[green]AUTHORIZED[/green] — {target}")
+        console.print(f"[green]AUTHORIZED[/green] - {target}")
     else:
-        console.print(f"[red]NOT AUTHORIZED[/red] — {target}")
+        console.print(f"[red]NOT AUTHORIZED[/red] - {target}")
         raise typer.Exit(code=2)
 
 
@@ -82,10 +86,12 @@ def scan(
     ),
     output: Path = typer.Option(Path("assessment-report.md"), "--output"),
     json_output: Path | None = typer.Option(None, "--json-output"),
+    html_output: Path | None = typer.Option(None, "--html-output"),
+    pdf_output: Path | None = typer.Option(None, "--pdf-output"),
     database: Path | None = typer.Option(None, "--db"),
     assessment_id: str | None = typer.Option(None, "--assessment-id"),
 ) -> None:
-    """Run selected scanners and optionally persist the assessment to SQLite."""
+    """Run selected scanners, report findings, and optionally persist them."""
     scope = AuthorizedScope.from_json_file(scope_file)
     scope.require_authorized(target)
 
@@ -113,6 +119,14 @@ def scan(
             json.dumps([item.model_dump(mode="json") for item in findings], indent=2),
             encoding="utf-8",
         )
+    if html_output:
+        html_output.parent.mkdir(parents=True, exist_ok=True)
+        html_output.write_text(
+            render_html_report(scope.assessment_name, target, findings),
+            encoding="utf-8",
+        )
+    if pdf_output:
+        write_pdf_report(pdf_output, scope.assessment_name, target, findings)
 
     if database:
         with AssessmentStore(database) as store:
@@ -129,8 +143,8 @@ def scan(
             store.save_findings(assessment.id, findings)
             console.print(f"Assessment ID: [bold]{assessment.id}[/bold]")
 
-    console.print(f"[green]Completed[/green] — {len(findings)} normalized findings")
-    console.print(f"Report: {output}")
+    console.print(f"[green]Completed[/green] - {len(findings)} normalized findings")
+    console.print(f"Markdown report: {output}")
 
 
 @app.command("assessment-list")
@@ -165,7 +179,7 @@ def finding_list(
     with AssessmentStore(database) as store:
         findings = store.list_findings(assessment_id)
 
-    table = Table(title=f"Findings — {assessment_id}")
+    table = Table(title=f"Findings - {assessment_id}")
     table.add_column("ID")
     table.add_column("Severity")
     table.add_column("Status")
@@ -237,6 +251,35 @@ def finding_evidence(
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=2) from exc
     console.print(f"[green]Evidence added[/green] to {finding_id}")
+
+
+@app.command("retest")
+def retest(
+    before_assessment: str = typer.Argument(...),
+    after_assessment: str = typer.Argument(...),
+    database: Path = typer.Option(Path("vaptforge.db"), "--db"),
+    output: Path = typer.Option(Path("retest-report.md"), "--output"),
+) -> None:
+    """Compare two persisted assessments and classify remediation deltas."""
+    with AssessmentStore(database) as store:
+        before = store.list_findings(before_assessment)
+        after = store.list_findings(after_assessment)
+        if store.get_assessment(before_assessment) is None:
+            raise typer.BadParameter(f"Assessment not found: {before_assessment}")
+        if store.get_assessment(after_assessment) is None:
+            raise typer.BadParameter(f"Assessment not found: {after_assessment}")
+
+    results = compare_findings(
+        [item.finding for item in before],
+        [item.finding for item in after],
+    )
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        render_retest_markdown(before_assessment, after_assessment, results),
+        encoding="utf-8",
+    )
+    console.print(f"[green]Retest complete[/green] - {len(results)} correlated results")
+    console.print(f"Retest report: {output}")
 
 
 if __name__ == "__main__":

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vaptforge"
-version = "0.3.0"
-description = "Authorized VAPT orchestration, finding normalization, correlation, and reporting framework."
+version = "0.4.0"
+description = "Authorized VAPT orchestration, lifecycle tracking, retesting, and reporting framework."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
@@ -15,6 +15,7 @@ dependencies = [
   "fastapi>=0.115",
   "httpx>=0.28",
   "pydantic>=2.10",
+  "reportlab>=4.2",
   "rich>=13.9",
   "typer>=0.15",
   "uvicorn>=0.34",

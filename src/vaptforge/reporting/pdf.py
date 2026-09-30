@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -42,8 +43,11 @@ def write_pdf_report(
     story = [
         Paragraph("VAPT Assessment Report", styles["Title"]),
         Spacer(1, 8),
-        Paragraph(f"<b>Assessment:</b> {assessment_name}", styles["BodyText"]),
-        Paragraph(f"<b>Target:</b> {target}", styles["BodyText"]),
+        Paragraph(
+            f"<b>Assessment:</b> {escape(assessment_name)}",
+            styles["BodyText"],
+        ),
+        Paragraph(f"<b>Target:</b> {escape(target)}", styles["BodyText"]),
         Paragraph("<b>Scope:</b> Authorized assessment only", styles["BodyText"]),
         Spacer(1, 12),
         Paragraph("Executive Summary", styles["Heading2"]),
@@ -89,18 +93,22 @@ def write_pdf_report(
     ):
         story.extend(
             [
-                Paragraph(f"VF-{index:03d}: {finding.title}", styles["Heading3"]),
                 Paragraph(
-                    f"<b>Severity:</b> {finding.severity.label()} | "
-                    f"<b>Status:</b> {finding.status.value}",
+                    f"VF-{index:03d}: {escape(finding.title)}",
+                    styles["Heading3"],
+                ),
+                Paragraph(
+                    f"<b>Severity:</b> {escape(finding.severity.label())} | "
+                    f"<b>Status:</b> {escape(finding.status.value)}",
                     styles["BodyText"],
                 ),
                 Paragraph(
-                    f"<b>Asset:</b> {finding.asset.host or finding.asset.target}",
+                    "<b>Asset:</b> "
+                    f"{escape(finding.asset.host or finding.asset.target)}",
                     styles["BodyText"],
                 ),
                 Paragraph(
-                    f"<b>Location:</b> {finding.location or 'N/A'}",
+                    f"<b>Location:</b> {escape(finding.location or 'N/A')}",
                     styles["BodyText"],
                 ),
             ]
@@ -114,7 +122,7 @@ def write_pdf_report(
             )
         story.append(
             Paragraph(
-                finding.description or "No description supplied.",
+                escape(finding.description or "No description supplied."),
                 styles["BodyText"],
             )
         )
@@ -123,7 +131,7 @@ def write_pdf_report(
             for evidence in finding.evidence:
                 story.append(
                     Paragraph(
-                        f"- {evidence.source}: {evidence.summary}",
+                        f"- {escape(evidence.source)}: {escape(evidence.summary)}",
                         styles["BodyText"],
                     )
                 )
@@ -131,7 +139,7 @@ def write_pdf_report(
             story.extend(
                 [
                     Paragraph("<b>Remediation</b>", styles["BodyText"]),
-                    Paragraph(finding.remediation, styles["BodyText"]),
+                    Paragraph(escape(finding.remediation), styles["BodyText"]),
                 ]
             )
         story.append(Spacer(1, 10))
