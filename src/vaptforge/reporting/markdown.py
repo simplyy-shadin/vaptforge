@@ -50,6 +50,11 @@ def render_markdown_report(assessment_name: str, target: str, findings: list[Fin
                 "",
                 f"- **Severity:** {finding.severity.label()}",
                 f"- **Status:** {finding.status.value}",
+                *(
+                    [f"- **Confidence:** {finding.confidence.value}"]
+                    if finding.confidence is not None
+                    else []
+                ),
                 f"- **Asset:** `{finding.asset.host or finding.asset.target}`",
                 f"- **Location:** `{finding.location or 'N/A'}`",
                 f"- **Source:** {finding.source}",
