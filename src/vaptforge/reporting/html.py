@@ -23,6 +23,10 @@ def _finding_html(index: int, finding: Finding) -> str:
         for item in finding.evidence
     )
     mappings: list[str] = []
+    if finding.confidence is not None:
+        mappings.append(
+            f"<li><strong>Confidence:</strong> {escape(finding.confidence.value)}</li>"
+        )
     if finding.cves:
         mappings.append(f"<li><strong>CVE:</strong> {escape(', '.join(finding.cves))}</li>")
     if finding.cwes:
