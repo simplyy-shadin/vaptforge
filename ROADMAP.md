@@ -3,52 +3,54 @@
 ## v0.1 - Core engine
 
 - [x] Scope enforcement
-- [x] Finding model
-- [x] Nmap adapter/parser
-- [x] Nuclei adapter/parser
-- [x] Correlation engine
-- [x] Markdown reporting
-- [x] CLI
-- [x] FastAPI health endpoint
-- [x] Local vulnerable lab
+- [x] Nmap/Nuclei adapters and parsers
+- [x] Normalized finding model
+- [x] Correlation and Markdown reporting
 - [x] CI and dependency audit
 
 ## v0.2 - Web assessment
 
 - [x] HTTP/cookie/CORS/method checks
 - [x] TLS checks
-- [x] Nikto adapter/parser
-- [x] ffuf adapter/parser
-- [x] httpx adapter/parser
-- [x] Cross-scanner CVE correlation
+- [x] Nikto, ffuf, and httpx adapters
+- [x] Cross-scanner correlation
 - [x] Evidence deduplication
 
 ## v0.3 - Assessment lifecycle
 
-- [x] SQLite persistence
-- [x] Assessment/asset entities
-- [x] Finding status transitions with history
-- [x] Manual validation notes
-- [x] Evidence attachment metadata
-- [x] CVSS v3.1 base scoring
-- [x] Curated CWE/OWASP enrichment
-- [x] Persistent assessment CLI workflow
+- [x] SQLite assessments/assets/findings
+- [x] Status transition history
+- [x] Validation notes and evidence metadata
+- [x] CVSS v3.1 scoring
+- [x] CWE/OWASP enrichment
+- [x] Persistent CLI workflow
 
 ## v0.4 - Retesting and reporting
 
-- [x] Before/after delta engine
-- [x] Fixed/new/persistent/changed classification
-- [x] HTML report
-- [x] PDF export
-- [x] Executive summary metrics
-- [x] Sanitized sample VAPT report
-- [x] Retest CLI workflow
+- [x] Delta/retest engine
+- [x] Fixed/persistent/changed/new classification
+- [x] Markdown/JSON/HTML/PDF reporting
+- [x] Executive metrics
+- [x] Sanitized sample report
 
-## v0.5 - Dashboard
+## v0.5 - Dashboard and API
 
-- [ ] Assessment API
-- [ ] Dashboard summary
-- [ ] Findings filters
-- [ ] Evidence view
-- [ ] Retest history
-- [ ] Export controls
+- [x] Assessment API
+- [x] Local dashboard summary
+- [x] Severity/status finding filters
+- [x] Evidence preview/detail API
+- [x] Persisted retest history
+- [x] Report export controls
+- [x] API-key protected mutations
+- [x] FastAPI integration tests
+
+## Future v1.0 hardening
+
+- [ ] Database migrations/versioning
+- [ ] Role-based multi-user authentication
+- [ ] Background job queue for long-running scans
+- [ ] Pluggable scanner SDK
+- [ ] SARIF import/export
+- [ ] SBOM and signed release artifacts
+- [ ] Browser-based evidence upload
+- [ ] Deployment reference architecture

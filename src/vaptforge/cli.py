@@ -269,16 +269,19 @@ def retest(
         if store.get_assessment(after_assessment) is None:
             raise typer.BadParameter(f"Assessment not found: {after_assessment}")
 
-    results = compare_findings(
-        [item.finding for item in before],
-        [item.finding for item in after],
-    )
+        results = compare_findings(
+            [item.finding for item in before],
+            [item.finding for item in after],
+        )
+        run = store.save_retest(before_assessment, after_assessment, results)
+
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         render_retest_markdown(before_assessment, after_assessment, results),
         encoding="utf-8",
     )
     console.print(f"[green]Retest complete[/green] - {len(results)} correlated results")
+    console.print(f"Retest run ID: {run.id}")
     console.print(f"Retest report: {output}")
 
 

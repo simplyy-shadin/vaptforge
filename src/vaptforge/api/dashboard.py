@@ -131,6 +131,24 @@ def render_assessment_dashboard(
 </div>
 
 <h2>Findings</h2>
+<form method="get">
+<label>Severity
+<select name="severity">
+<option value="">All</option>
+<option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option>
+<option>LOW</option><option>INFO</option>
+</select>
+</label>
+<label>Status
+<select name="status">
+<option value="">All</option>
+<option>discovered</option><option>potential</option><option>verified</option>
+<option>remediated</option><option>retested</option><option>false_positive</option>
+</select>
+</label>
+<button type="submit">Filter</button>
+<a href="/dashboard/assessments/{assessment_id}">Clear</a>
+</form>
 <table>
 <thead>
 <tr><th>ID</th><th>Severity</th><th>Status</th><th>Title</th><th>Location</th><th>Evidence</th></tr>
