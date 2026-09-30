@@ -153,26 +153,30 @@ class TlsSecurityScanner(Scanner):
 
         context = ssl.create_default_context()
         try:
-            with socket.create_connection((host, port), timeout=10) as raw_socket:
-                with context.wrap_socket(raw_socket, server_hostname=host) as tls_socket:
-                    tls_version = tls_socket.version()
-                    cipher_info = tls_socket.cipher()
-                    cipher = cipher_info[0] if cipher_info else None
-                    certificate = tls_socket.getpeercert()
-                    not_after = certificate.get("notAfter")
-                    if not_after:
-                        timestamp = ssl.cert_time_to_seconds(not_after)
-                        certificate_not_after = datetime.fromtimestamp(timestamp, tz=UTC)
+            with (
+                socket.create_connection((host, port), timeout=10) as raw_socket,
+                context.wrap_socket(raw_socket, server_hostname=host) as tls_socket,
+            ):
+                tls_version = tls_socket.version()
+                cipher_info = tls_socket.cipher()
+                cipher = cipher_info[0] if cipher_info else None
+                certificate = tls_socket.getpeercert()
+                not_after = certificate.get("notAfter")
+                if not_after:
+                    timestamp = ssl.cert_time_to_seconds(not_after)
+                    certificate_not_after = datetime.fromtimestamp(timestamp, tz=UTC)
         except ssl.SSLCertVerificationError as exc:
             validation_error = str(exc)
             fallback = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             fallback.check_hostname = False
             fallback.verify_mode = ssl.CERT_NONE
-            with socket.create_connection((host, port), timeout=10) as raw_socket:
-                with fallback.wrap_socket(raw_socket, server_hostname=host) as tls_socket:
-                    tls_version = tls_socket.version()
-                    cipher_info = tls_socket.cipher()
-                    cipher = cipher_info[0] if cipher_info else None
+            with (
+                socket.create_connection((host, port), timeout=10) as raw_socket,
+                fallback.wrap_socket(raw_socket, server_hostname=host) as tls_socket,
+            ):
+                tls_version = tls_socket.version()
+                cipher_info = tls_socket.cipher()
+                cipher = cipher_info[0] if cipher_info else None
 
         return analyze_tls_snapshot(
             target,
