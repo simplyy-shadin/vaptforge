@@ -32,6 +32,9 @@ class SessionAuth(BaseModel):
     cookie_env: str | None = None
     authorization_env: str | None = None
     headers_env: dict[str, str] = Field(default_factory=dict)
+    verify_url: str | None = None
+    verify_status: int = 200
+    success_contains: str | None = None
 
     @field_validator("cookie_env", "authorization_env")
     @classmethod
@@ -71,6 +74,21 @@ class SessionAuth(BaseModel):
             )
         return self
 
+    @field_validator("verify_status")
+    @classmethod
+    def valid_verify_status(cls, value: int) -> int:
+        if value < 100 or value > 599:
+            raise ValueError("verify_status must be a valid HTTP status code")
+        return value
+
+    @field_validator("verify_url", "success_contains")
+    @classmethod
+    def strip_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
+
     def environment_references(self) -> tuple[str, ...]:
         refs = [self.cookie_env, self.authorization_env, *self.headers_env.values()]
         return tuple(dict.fromkeys(item for item in refs if item))
@@ -81,6 +99,7 @@ class AuthorizedScope(BaseModel):
     authorization_reference: str
     targets: list[ScopeEntry] = Field(min_length=1)
     session: SessionAuth | None = None
+    crawl_seeds: list[str] = Field(default_factory=list)
 
     @classmethod
     def from_json_file(cls, path: str | Path) -> AuthorizedScope:

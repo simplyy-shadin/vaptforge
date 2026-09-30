@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 
 from vaptforge.deep.crawler import crawl_target
 from vaptforge.models.scope import AuthorizedScope, ScopeEntry
@@ -112,3 +113,62 @@ def test_crawler_extracts_same_origin_javascript_attack_surface() -> None:
         for item in result.parameters
     )
     assert all("example.org" not in url for url in requested)
+
+
+
+def test_crawler_starts_from_authorized_same_origin_seed() -> None:
+    requested: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(str(request.url))
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/html"},
+            text="<html></html>",
+        )
+
+    scope = AuthorizedScope(
+        assessment_name="Owned lab",
+        authorization_reference="AUTH-1",
+        targets=[ScopeEntry(value="127.0.0.1")],
+    )
+
+    with httpx.Client(
+        transport=httpx.MockTransport(handler),
+        follow_redirects=False,
+    ) as client:
+        result = crawl_target(
+            "http://127.0.0.1:4280",
+            scope,
+            client=client,
+            seed_urls=["/vulnerabilities/sqli/?id=1"],
+        )
+
+    assert "http://127.0.0.1:4280/vulnerabilities/sqli/?id=1" in result.pages
+    assert any(
+        item.endpoint == "http://127.0.0.1:4280/vulnerabilities/sqli/"
+        and item.name == "id"
+        for item in result.parameters
+    )
+    assert any("/vulnerabilities/sqli/" in url for url in requested)
+
+
+def test_crawler_rejects_cross_origin_seed() -> None:
+    scope = AuthorizedScope(
+        assessment_name="Owned lab",
+        authorization_reference="AUTH-1",
+        targets=[ScopeEntry(value="127.0.0.1")],
+    )
+
+    with (
+        httpx.Client(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200))
+        ) as client,
+        pytest.raises(PermissionError, match="outside the target origin"),
+    ):
+        crawl_target(
+            "http://127.0.0.1:4280",
+            scope,
+            client=client,
+            seed_urls=["http://127.0.0.1:8000/other"],
+        )

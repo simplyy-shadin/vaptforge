@@ -8,7 +8,7 @@ import httpx
 
 from vaptforge.core.targets import http_url_from_target
 from vaptforge.deep.crawler import CrawlResult, DiscoveredParameter, crawl_target
-from vaptforge.deep.session import resolve_session_headers
+from vaptforge.deep.session import resolve_session_headers, verify_session
 from vaptforge.models.finding import (
     AssetRef,
     Evidence,
@@ -31,6 +31,7 @@ UNSAFE_PARAMETER_MARKERS = (
     "remove",
     "destroy",
     "revoke",
+    "submit",
 )
 
 SQL_ERROR_MARKERS = (
@@ -183,7 +184,13 @@ def analyze_sql_error(
     )
 
 
-def attack_surface_finding(target: str, crawl: CrawlResult) -> Finding:
+def attack_surface_finding(
+    target: str,
+    crawl: CrawlResult,
+    *,
+    session_state: str = "not-configured",
+    seed_count: int = 0,
+) -> Finding:
     get_forms = sum(form.method == "get" for form in crawl.forms)
     post_forms = sum(form.method == "post" for form in crawl.forms)
     return Finding(
@@ -206,12 +213,16 @@ def attack_surface_finding(target: str, crawl: CrawlResult) -> Finding:
                     f"forms={len(crawl.forms)} (GET={get_forms}, POST={post_forms}); "
                     f"scripts={len(crawl.script_sources)}; "
                     f"javascript_endpoints={len(crawl.javascript_endpoints)}; "
+                    f"session={session_state}; seeds={seed_count}; "
                     f"crawl_errors={len(crawl.errors)}"
                 ),
             )
         ],
         tags=["deep-assessment", "attack-surface", "reconnaissance"],
         metadata={
+            "session_state": session_state,
+            "authenticated_session": session_state == "verified",
+            "crawl_seed_count": seed_count,
             "pages": crawl.pages,
             "parameters": [
                 {
@@ -273,9 +284,19 @@ class DeepWebScanner(Scanner):
             follow_redirects=False,
             headers=request_headers,
         ) as client:
-            crawl = crawl_target(target, scope, client=client)
-            surface = attack_surface_finding(target, crawl)
-            surface.metadata["authenticated_session"] = bool(scope.session)
+            session_state = verify_session(client, scope, target)
+            crawl = crawl_target(
+                target,
+                scope,
+                client=client,
+                seed_urls=scope.crawl_seeds,
+            )
+            surface = attack_surface_finding(
+                target,
+                crawl,
+                session_state=session_state,
+                seed_count=len(scope.crawl_seeds),
+            )
             findings.append(surface)
 
             contexts = _parameter_contexts(crawl)[:MAX_ACTIVE_PARAMETER_CHECKS]

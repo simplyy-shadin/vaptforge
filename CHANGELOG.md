@@ -2,6 +2,20 @@
 
 All notable VAPTForge changes are documented here. The project follows semantic versioning for portfolio milestones.
 
+## [0.9.3] - 2026-09-30
+
+### Added
+- Authenticated-session verification before native Deep crawling.
+- Optional verification URL, expected status, and success marker in session configuration.
+- Same-origin authenticated crawl seeds for analyst-directed coverage of in-scope application areas.
+- Session verification state and crawl-seed count in the Deep attack-surface evidence.
+
+### Security
+- Session verification must use the same origin as the assessment target.
+- Invalid or expired configured sessions fail before Deep crawling when verification is configured.
+- Cross-origin or state-changing crawl seeds are rejected.
+- Secret values remain environment-backed and are never serialized into scope or job state.
+
 ## [0.9.2] - 2026-09-30
 
 ### Added
