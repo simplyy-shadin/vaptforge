@@ -2,7 +2,10 @@ import sqlite3
 
 import pytest
 
-from vaptforge.persistence.migrations import DatabaseVersionError, SCHEMA_VERSION
+from vaptforge.persistence.migrations import (
+    SCHEMA_VERSION,
+    DatabaseVersionError,
+)
 from vaptforge.persistence.store import AssessmentStore
 
 
