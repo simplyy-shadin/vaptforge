@@ -43,9 +43,10 @@ def target_suggestions(scope: AuthorizedScope) -> list[tuple[str, str]]:
 
         normalized = value.rstrip(".").lower()
         if normalized in {"127.0.0.1", "localhost"}:
-            add("http://127.0.0.1:3000", "OWASP Juice Shop local lab")
-            add("http://127.0.0.1:4280", "DVWA local lab")
-            add("http://127.0.0.1", "Local host")
+            lab_host = "localhost" if normalized == "localhost" else "127.0.0.1"
+            add(f"http://{lab_host}:3000", "OWASP Juice Shop local lab")
+            add(f"http://{lab_host}:4280", "DVWA local lab")
+            add(f"http://{lab_host}", "Local host")
             continue
 
         if _is_network(value):
