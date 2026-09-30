@@ -31,6 +31,7 @@ UNSAFE_PARAMETER_MARKERS = (
     "remove",
     "destroy",
     "revoke",
+    "submit",
 )
 
 SQL_ERROR_MARKERS = (
@@ -283,7 +284,7 @@ class DeepWebScanner(Scanner):
             follow_redirects=False,
             headers=request_headers,
         ) as client:
-            session_state = verify_session(client, scope)
+            session_state = verify_session(client, scope, target)
             crawl = crawl_target(
                 target,
                 scope,
