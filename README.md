@@ -41,6 +41,7 @@ MD / JSON / HTML / PDF      FILTER / EXPORT / HISTORY
 
 **Assessment**
 - Python-native HTTP header, cookie, CORS, method, and TLS checks
+- native Deep Web engine with bounded same-origin crawling, page/form/GET-parameter inventory, benign reflection analysis, and SQL-error differential checks
 - Nmap, Nuclei, Nikto, ffuf, and ProjectDiscovery httpx adapters
 - machine-readable parser layer
 - pluggable scanner SDK via `vaptforge.scanners` Python entry points
@@ -55,7 +56,7 @@ MD / JSON / HTML / PDF      FILTER / EXPORT / HISTORY
 - scanner findings never auto-promoted to VERIFIED
 
 **Analysis**
-- Pydantic finding/evidence model
+- Pydantic finding/evidence model with separate lifecycle status and evidence confidence
 - deterministic fingerprints
 - CVE-based cross-scanner correlation
 - evidence deduplication
@@ -147,7 +148,7 @@ For advanced/manual background execution, you can still control every component 
 
 ```bash
 vaptforge worker --db data/vaptforge.db
-vaptforge queue-assessment http://127.0.0.1:3000 --scope config/scope.example.json --profile web --db data/vaptforge.db
+vaptforge queue-assessment http://127.0.0.1:3000 --scope config/scope.example.json --profile deep --db data/vaptforge.db
 vaptforge job-status <JOB_ID> --db data/vaptforge.db
 ```
 
@@ -196,6 +197,7 @@ See [API and Dashboard](docs/api-dashboard.md).
 - [SARIF and SBOM](docs/sarif-sbom.md)
 - [Background jobs](docs/background-jobs.md)
 - [Guided startup](docs/guided-startup.md)
+- [Deep assessment engine](docs/deep-assessment.md)
 - [Security policy](SECURITY.md)
 - [Roadmap](ROADMAP.md)
 
