@@ -17,7 +17,7 @@ ABSOLUTE_URL_RE = re.compile(
 ROOT_RELATIVE_API_RE = re.compile(
     r"""(?ix)
     /
-    (?:api|rest|graphql|api-docs|v[0-9]+)
+    (?:api-docs|graphql|rest|api|v[0-9]+)
     (?:
         /[a-z0-9_~!$&()*+,;=:@%{}.-]*
     )*
