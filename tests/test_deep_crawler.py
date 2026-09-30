@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 
 from vaptforge.deep.crawler import crawl_target
 from vaptforge.models.scope import AuthorizedScope, ScopeEntry
@@ -160,7 +161,7 @@ def test_crawler_rejects_cross_origin_seed() -> None:
     )
 
     with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200))) as client:
-        with __import__("pytest").raises(PermissionError, match="outside the target origin"):
+        with pytest.raises(PermissionError, match="outside the target origin"):
             crawl_target(
                 "http://127.0.0.1:4280",
                 scope,
