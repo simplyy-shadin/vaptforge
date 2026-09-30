@@ -71,7 +71,9 @@
 - [x] Finding confidence model separate from lifecycle status
 - [x] Confidence surfaced in CLI, dashboard, and reports
 - [x] Deep-assessment methodology and safety documentation
-- [x] Environment-backed authenticated/session-aware crawling\n- [ ] Browser-driven authenticated navigation
+- [x] Environment-backed authenticated/session-aware crawling
+- [x] Session verification and authenticated crawl seeds
+- [ ] Browser-driven authenticated navigation
 - [x] JavaScript endpoint extraction
 - [ ] Browser-assisted XSS context validation
 - [ ] Additional safe native checks for redirects and API-specific input handling
