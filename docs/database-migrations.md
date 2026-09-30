@@ -18,3 +18,5 @@ vaptforge db-status --db data/vaptforge.db
 ```
 
 Migration definitions live in `src/vaptforge/persistence/migrations.py`. New migrations must be append-only: never rewrite the meaning of a released migration version.
+
+Schema v3 adds durable assessment jobs, a worker lease, and job-linked scanner runs. It rebuilds the v2 scanner-run table to allow queued runs without a start timestamp, preserving older audit records. The migration and schema-version update are transactional.

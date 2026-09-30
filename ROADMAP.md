@@ -44,11 +44,19 @@
 - [x] API-key protected mutations
 - [x] FastAPI integration tests
 
+## v0.7 - Background assessment execution
+
+- [x] SQLite-backed assessment jobs and scanner-run audit
+- [x] Separate local worker with renewable lease and restart recovery
+- [x] Per-scanner status, errors, counts, cancellation between scanners
+- [x] API and dashboard progress, CLI queue/worker/status commands
+
 ## Future v1.0 hardening
 
 - [x] Database migrations/versioning
 - [ ] Role-based multi-user authentication
-- [ ] Background job queue for long-running scans
+- [x] Background job queue for long-running scans
+- [ ] Unified platform startup and assessment profiles
 - [x] Pluggable scanner SDK
 - [x] SARIF import/export
 - [x] SBOM generation

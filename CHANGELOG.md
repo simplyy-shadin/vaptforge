@@ -2,6 +2,18 @@
 
 All notable VAPTForge changes are documented here. The project follows semantic versioning for portfolio milestones.
 
+## [0.7.0] - 2026-09-30
+
+### Added
+- Durable SQLite background assessment jobs and ordered scanner-run records.
+- Separate local worker with exclusive renewable lease, restart recovery, scanner error isolation, and cancellation between scanners.
+- Authenticated job creation/cancellation API, job progress API, dashboard run status, and CLI queue/worker/status commands.
+- Schema v3 migration retaining legacy scanner-run records.
+
+### Security
+- Target scope is checked before queueing and again before each scanner invocation.
+- API queue/cancel mutations require the configured API key; scanner observations remain unverified.
+
 ## [0.6.0] - 2026-09-30
 
 ### Added

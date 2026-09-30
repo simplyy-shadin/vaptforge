@@ -1,6 +1,6 @@
 # API and Dashboard
 
-VAPTForge v0.5 exposes the persisted assessment model through a local FastAPI application.
+VAPTForge exposes the persisted assessment model through a local FastAPI application.
 
 ## Start the console
 
@@ -18,6 +18,7 @@ The dashboard provides:
 - evidence previews
 - report export controls
 - retest history
+- background job and per-scanner progress on assessment pages
 
 ## Read API
 
@@ -25,6 +26,8 @@ Read endpoints do not mutate assessment state:
 
 ```text
 GET /health
+GET /api/jobs
+GET /api/jobs/{job_id}
 GET /api/assessments
 GET /api/assessments/{assessment_id}
 GET /api/assessments/{assessment_id}/findings
@@ -67,6 +70,8 @@ X-VAPTForge-API-Key: <configured key>
 Write endpoints:
 
 ```text
+POST /api/jobs
+POST /api/jobs/{job_id}/cancel
 POST /api/findings/{finding_id}/transition
 POST /api/findings/{finding_id}/notes
 POST /api/findings/{finding_id}/evidence
