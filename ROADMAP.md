@@ -51,12 +51,21 @@
 - [x] Per-scanner status, errors, counts, cancellation between scanners
 - [x] API and dashboard progress, CLI queue/worker/status commands
 
+## v0.8 - Guided startup and assessment profiles
+
+- [x] Friendly `vaptforge start` launcher
+- [x] Guided/automatic and manual/advanced modes
+- [x] Authorized target suggestions and optional scope creation
+- [x] Quick/web/network/full assessment profiles
+- [x] Automatic optional-tool availability handling in guided mode
+- [x] Root `-h` / `--help` experience and profile discovery
+
 ## Future v1.0 hardening
 
 - [x] Database migrations/versioning
 - [ ] Role-based multi-user authentication
 - [x] Background job queue for long-running scans
-- [ ] Unified platform startup and assessment profiles
+- [x] Unified platform startup and assessment profiles
 - [x] Pluggable scanner SDK
 - [x] SARIF import/export
 - [x] SBOM generation
