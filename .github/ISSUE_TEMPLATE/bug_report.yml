@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a reproducible defect in VAPTForge
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve VAPTForge. Do not include credentials, private targets, tokens, or sensitive assessment evidence.
+  - type: input
+    id: version
+    attributes:
+      label: VAPTForge version
+      placeholder: "0.5.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Scope / authorization
+        - Scanner adapter
+        - Parser / normalization
+        - Persistence / lifecycle
+        - Retesting
+        - Reporting
+        - API / dashboard
+        - CI / packaging
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Provide a sanitized description of the behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Use a local or otherwise authorized target only.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: authorization
+    attributes:
+      label: Testing confirmation
+      options:
+        - label: Any target referenced here is owned by me or explicitly authorized for testing.
+          required: true

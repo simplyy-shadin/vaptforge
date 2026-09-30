@@ -1,5 +1,11 @@
 # VAPTForge
 
+[![CI](https://github.com/simplyy-shadin/vaptforge/actions/workflows/ci.yml/badge.svg)](https://github.com/simplyy-shadin/vaptforge/actions/workflows/ci.yml)
+[![Security Checks](https://github.com/simplyy-shadin/vaptforge/actions/workflows/security.yml/badge.svg)](https://github.com/simplyy-shadin/vaptforge/actions/workflows/security.yml)
+[![CodeQL](https://github.com/simplyy-shadin/vaptforge/actions/workflows/codeql.yml/badge.svg)](https://github.com/simplyy-shadin/vaptforge/actions/workflows/codeql.yml)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 VAPTForge is a portfolio-grade **Vulnerability Assessment and Penetration Testing platform** for authorized environments. It brings scope enforcement, reconnaissance, web/TLS assessment, scanner orchestration, finding correlation, manual validation, remediation retesting, professional reporting, and a local assessment dashboard into one Python project.
 
 > **Authorized testing only.** Every scan requires explicit scope. Use VAPTForge only on systems you own or have written permission to assess.

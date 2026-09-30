@@ -1,0 +1,45 @@
+name: Feature request
+description: Propose a VAPT workflow or engineering improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Proposals should preserve VAPTForge's authorized-testing model and evidence-first validation workflow.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What assessment or engineering problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Scope / authorization
+        - Scanner integration
+        - Correlation / enrichment
+        - Validation / evidence
+        - Retesting
+        - Reporting
+        - API / dashboard
+        - Security / CI
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety
+      options:
+        - label: The proposal can retain explicit authorization and conservative defaults.
+          required: true
