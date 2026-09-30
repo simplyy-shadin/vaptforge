@@ -67,8 +67,6 @@ def create_app(
         if x_api_key is None or not secrets.compare_digest(x_api_key, configured):
             raise HTTPException(status_code=401, detail="Invalid API key")
 
-    WriteAccess = Annotated[None, Depends(require_write_access)]
-
     @application.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok", "version": __version__}
@@ -79,13 +77,32 @@ def create_app(
             return render_dashboard(store.list_assessments(), store.list_retests())
 
     @application.get("/dashboard/assessments/{assessment_id}", response_class=HTMLResponse)
-    def assessment_dashboard(assessment_id: str) -> str:
+    def assessment_dashboard(
+        assessment_id: str,
+        severity: FilterValue = None,
+        status: FilterValue = None,
+    ) -> str:
         with AssessmentStore(application.state.database_path) as store:
             assessment = store.get_assessment(assessment_id)
             if assessment is None:
                 raise HTTPException(status_code=404, detail="Assessment not found")
             findings = store.list_findings(assessment_id)
-        return render_assessment_dashboard(assessment, findings)
+
+        normalized_severity = severity.upper() if severity else None
+        normalized_status = status.lower() if status else None
+        filtered = [
+            item
+            for item in findings
+            if (
+                normalized_severity is None
+                or item.finding.severity.label() == normalized_severity
+            )
+            and (
+                normalized_status is None
+                or item.finding.status.value == normalized_status
+            )
+        ]
+        return render_assessment_dashboard(assessment, filtered)
 
     @application.get("/api/assessments")
     def assessments() -> list[dict[str, object]]:
@@ -146,7 +163,7 @@ def create_app(
     def transition_finding(
         finding_id: str,
         request: TransitionRequest,
-        _write_access: WriteAccess,
+        _write_access: None = Depends(require_write_access),
     ) -> dict[str, str]:
         try:
             with AssessmentStore(application.state.database_path) as store:
