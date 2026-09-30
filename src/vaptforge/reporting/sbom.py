@@ -4,6 +4,7 @@ import json
 import re
 from importlib import metadata
 from pathlib import Path
+from uuid import uuid4
 from typing import Any, Iterable
 
 from vaptforge import __version__
@@ -51,7 +52,7 @@ def build_cyclonedx_sbom(
     return {
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
-        "serialNumber": "urn:uuid:vaptforge-local-sbom",
+        "serialNumber": f"urn:uuid:{uuid4()}",
         "version": 1,
         "metadata": {
             "component": {
