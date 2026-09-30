@@ -10,7 +10,7 @@ VAPTForge is a portfolio-grade **Vulnerability Assessment and Penetration Testin
 
 > **Authorized testing only.** Every scan requires explicit scope. Use VAPTForge only on systems you own or have written permission to assess.
 
-## Current release: v0.7.0
+## Current release: v0.8.0
 
 ```text
 AUTHORIZED SCOPE
@@ -62,6 +62,8 @@ MD / JSON / HTML / PDF      FILTER / EXPORT / HISTORY
 **Lifecycle**
 - SQLite assessments, assets, findings, evidence, notes, and status history
 - persistent background jobs and per-scanner audit/progress through a separate local worker
+- guided `vaptforge start` launcher with automatic and manual workflows
+- named assessment profiles with optional-tool availability checks
 - DISCOVERED -> POTENTIAL -> VERIFIED -> REMEDIATED -> RETESTED
 - FALSE_POSITIVE workflow
 - evidence attachment metadata
@@ -96,12 +98,35 @@ MD / JSON / HTML / PDF      FILTER / EXPORT / HISTORY
 
 ## Quick start
 
+Install VAPTForge, then use the guided launcher. You do not need to memorize scanner flags or long commands.
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-vaptforge doctor
+vaptforge start
 ```
+
+The launcher offers two paths:
+
+1. **Guided / Automatic** — choose an authorization scope, pick a suggested authorized target, select a simple assessment profile, then VAPTForge queues the job and starts the worker + dashboard.
+2. **Manual / Advanced** — start the platform services and keep direct control of the CLI/API workflow.
+
+Use either help flag at any time:
+
+```bash
+vaptforge -h
+vaptforge --help
+vaptforge start -h
+```
+
+List the simple profiles:
+
+```bash
+vaptforge profile-list
+```
+
+Profiles currently include **quick**, **web**, **network**, and **full**. Guided mode checks which optional scanner binaries are actually installed and clearly skips unavailable ones instead of hiding the decision.
 
 Start the local vulnerable lab:
 
@@ -115,11 +140,11 @@ Run and persist an authorized assessment:
 vaptforge scan http://127.0.0.1:3000   --scope config/scope.example.json   --scanners http,httpx,nmap,nuclei,nikto,ffuf   --db data/vaptforge.db   --output reports/initial.md   --json-output reports/initial.json   --html-output reports/initial.html   --pdf-output reports/initial.pdf   --sarif-output reports/initial.sarif
 ```
 
-For background execution, start a worker in a separate terminal and queue a job:
+For advanced/manual background execution, you can still control every component directly:
 
 ```bash
 vaptforge worker --db data/vaptforge.db
-vaptforge queue-assessment http://127.0.0.1:3000 --scope config/scope.example.json --scanners http,tls --db data/vaptforge.db
+vaptforge queue-assessment http://127.0.0.1:3000 --scope config/scope.example.json --profile web --db data/vaptforge.db
 vaptforge job-status <JOB_ID> --db data/vaptforge.db
 ```
 
@@ -167,6 +192,7 @@ See [API and Dashboard](docs/api-dashboard.md).
 - [Database migrations](docs/database-migrations.md)
 - [SARIF and SBOM](docs/sarif-sbom.md)
 - [Background jobs](docs/background-jobs.md)
+- [Guided startup](docs/guided-startup.md)
 - [Security policy](SECURITY.md)
 - [Roadmap](ROADMAP.md)
 

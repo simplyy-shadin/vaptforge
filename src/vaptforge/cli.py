@@ -6,6 +6,7 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 
 from vaptforge import __version__
@@ -13,7 +14,7 @@ from vaptforge.correlation.engine import correlate_findings
 from vaptforge.enrichment.owasp import enrich_owasp
 from vaptforge.jobs.worker import AssessmentWorker
 from vaptforge.models.finding import Evidence, Finding, FindingStatus
-from vaptforge.models.scope import AuthorizedScope
+from vaptforge.models.scope import AuthorizedScope, ScopeEntry
 from vaptforge.parsers.sarif import parse_sarif
 from vaptforge.persistence.jobs import JobStore, WorkerBusyError
 from vaptforge.persistence.migrations import SCHEMA_VERSION
@@ -27,8 +28,20 @@ from vaptforge.reporting.sbom import write_sbom
 from vaptforge.retest.engine import compare_findings
 from vaptforge.scanners.base import Scanner
 from vaptforge.scanners.registry import ScannerPluginError, discover_scanners
+from vaptforge.ux.guided import discover_scope_files, safe_scope_filename, target_suggestions
+from vaptforge.ux.platform import run_platform
+from vaptforge.ux.profiles import PROFILES, resolve_profile_scanners
 
-app = typer.Typer(no_args_is_help=True, help="Authorized VAPT orchestration and reporting.")
+app = typer.Typer(
+    no_args_is_help=True,
+    help="Authorized VAPT assessment platform with guided and advanced workflows.",
+    context_settings={"help_option_names": ["-h", "--help"]},
+    rich_markup_mode="rich",
+    epilog=(
+        "[bold]Recommended:[/bold] run [cyan]vaptforge start[/cyan] for the guided launcher. "
+        "Advanced users can continue using scan, queue-assessment, worker, and API commands."
+    ),
+)
 console = Console()
 
 
@@ -37,6 +50,247 @@ def _scanner_registry() -> dict[str, Scanner]:
         return discover_scanners()
     except ScannerPluginError as exc:
         raise typer.BadParameter(str(exc)) from exc
+
+
+def _prompt_choice(prompt: str, count: int, *, default: int = 1) -> int:
+    while True:
+        raw = typer.prompt(prompt, default=str(default))
+        try:
+            value = int(raw)
+        except ValueError:
+            console.print("[red]Enter the number of one of the choices.[/red]")
+            continue
+        if 1 <= value <= count:
+            return value
+        console.print(f"[red]Choose a number between 1 and {count}.[/red]")
+
+
+def _create_scope_file() -> Path:
+    console.print(
+        Panel(
+            "Create an authorization scope. Only add systems you own or have explicit "
+            "permission to test.",
+            title="New Scope",
+        )
+    )
+    if not typer.confirm("I confirm I am authorized to test the target I will enter"):
+        raise typer.Abort()
+
+    assessment_name = typer.prompt("Assessment name", default="Authorized Assessment").strip()
+    target = typer.prompt("Authorized target (URL, hostname, or IP)").strip()
+    authorization_reference = typer.prompt(
+        "Authorization reference / note",
+        default="User-confirmed authorized assessment",
+    ).strip()
+
+    scope = AuthorizedScope(
+        assessment_name=assessment_name,
+        authorization_reference=authorization_reference,
+        targets=[ScopeEntry(value=target)],
+    )
+    path = Path("config") / safe_scope_filename(assessment_name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(scope.model_dump_json(indent=2), encoding="utf-8")
+    console.print(f"[green]Scope saved:[/green] {path}")
+    return path
+
+
+def _choose_scope_file() -> Path:
+    files = discover_scope_files()
+    if not files:
+        console.print("[yellow]No scope files found in config/.[/yellow]")
+        return _create_scope_file()
+
+    table = Table(title="Authorization Scopes")
+    table.add_column("#", justify="right")
+    table.add_column("Scope file")
+    for index, path in enumerate(files, start=1):
+        table.add_row(str(index), str(path))
+    table.add_row(str(len(files) + 1), "Create a new authorized scope")
+    console.print(table)
+
+    choice = _prompt_choice("Choose scope", len(files) + 1)
+    if choice == len(files) + 1:
+        return _create_scope_file()
+    return files[choice - 1]
+
+
+def _choose_target(scope: AuthorizedScope) -> str:
+    suggestions = target_suggestions(scope)
+    if suggestions:
+        table = Table(title="Authorized Target Suggestions")
+        table.add_column("#", justify="right")
+        table.add_column("Target")
+        table.add_column("Suggestion")
+        for index, (target, label) in enumerate(suggestions, start=1):
+            table.add_row(str(index), target, label)
+        table.add_row(str(len(suggestions) + 1), "Enter another target", "Must match scope")
+        console.print(table)
+        choice = _prompt_choice("Choose target", len(suggestions) + 1)
+        if choice <= len(suggestions):
+            target = suggestions[choice - 1][0]
+        else:
+            target = typer.prompt("Authorized target").strip()
+    else:
+        target = typer.prompt("Authorized target covered by this scope").strip()
+
+    scope.require_authorized(target)
+    return target
+
+
+def _choose_profile(registered: set[str]) -> tuple[str, list[str], list[str]]:
+    profiles = list(PROFILES.values())
+    table = Table(title="Assessment Profiles")
+    table.add_column("#", justify="right")
+    table.add_column("Profile")
+    table.add_column("Purpose")
+    table.add_column("Guided mode")
+    for index, profile in enumerate(profiles, start=1):
+        selected, skipped = resolve_profile_scanners(
+            profile.name,
+            registered=registered,
+            skip_unavailable=True,
+        )
+        status = f"{len(selected)} ready"
+        if skipped:
+            status += f", {len(skipped)} skipped"
+        table.add_row(str(index), profile.label, profile.description, status)
+    console.print(table)
+
+    default = next(
+        (index for index, profile in enumerate(profiles, start=1) if profile.name == "web"),
+        1,
+    )
+    while True:
+        choice = _prompt_choice("Choose profile", len(profiles), default=default)
+        profile = profiles[choice - 1]
+        selected, skipped = resolve_profile_scanners(
+            profile.name,
+            registered=registered,
+            skip_unavailable=True,
+        )
+        if selected:
+            return profile.name, selected, skipped
+        console.print(
+            "[red]None of the scanners in that profile are currently available. "
+            "Install the required tools or choose another profile.[/red]"
+        )
+
+
+def _guided_queue(database: Path) -> str:
+    scope_file = _choose_scope_file()
+    scope = AuthorizedScope.from_json_file(scope_file)
+    target = _choose_target(scope)
+    registry = _scanner_registry()
+    profile, scanners, skipped = _choose_profile(set(registry))
+
+    console.print(
+        Panel(
+            f"[bold]Target:[/bold] {target}\n"
+            f"[bold]Scope:[/bold] {scope_file}\n"
+            f"[bold]Profile:[/bold] {profile}\n"
+            f"[bold]Scanners:[/bold] {', '.join(scanners)}",
+            title="Assessment Plan",
+        )
+    )
+    if skipped:
+        console.print("[yellow]Unavailable optional scanners skipped:[/yellow]")
+        for item in skipped:
+            console.print(f"  - {item}")
+
+    if not typer.confirm("Queue this authorized assessment?", default=True):
+        raise typer.Abort()
+
+    database.parent.mkdir(parents=True, exist_ok=True)
+    with JobStore(database) as store:
+        job = store.enqueue(target, scope, scanners)
+    console.print(f"[green]Queued assessment[/green] {job.assessment_id}")
+    console.print(f"Job ID: [bold]{job.id}[/bold]")
+    return job.id
+
+
+def _manual_start_help(database: Path) -> None:
+    table = Table(title="Manual / Advanced Workflow")
+    table.add_column("Task")
+    table.add_column("Command")
+    table.add_row("Show all commands", "vaptforge -h")
+    table.add_row("Check tools", "vaptforge doctor")
+    table.add_row("See profiles", "vaptforge profile-list")
+    table.add_row(
+        "Queue manually",
+        "vaptforge queue-assessment <target> --scope <scope.json> --profile web",
+    )
+    table.add_row("Check a job", f"vaptforge job-status <JOB_ID> --db {database}")
+    table.add_row("Direct synchronous scan", "vaptforge scan -h")
+    console.print(table)
+
+
+@app.command()
+def start(
+    database: Path = typer.Option(Path("data/vaptforge.db"), "--db", help="Platform database."),
+    host: str = typer.Option("127.0.0.1", "--host", help="Dashboard/API bind host."),
+    port: int = typer.Option(8000, "--port", min=1, max=65535),
+    browser: bool = typer.Option(True, "--browser/--no-browser"),
+    mode: str | None = typer.Option(
+        None,
+        "--mode",
+        help="guided or manual. Omit this option to choose from the launcher.",
+    ),
+) -> None:
+    """Start VAPTForge using a friendly guided launcher or advanced/manual mode."""
+    console.print(
+        Panel(
+            "[bold]1. Guided / Automatic[/bold] (recommended)\n"
+            "Choose an authorized scope, target, and assessment profile. "
+            "VAPTForge queues the assessment and starts the worker + dashboard.\n\n"
+            "[bold]2. Manual / Advanced[/bold]\n"
+            "Start the worker + dashboard only and keep full control of CLI commands.",
+            title=f"VAPTForge {__version__}",
+            subtitle="Authorized testing only",
+        )
+    )
+
+    normalized_mode = mode.strip().lower() if mode else None
+    if normalized_mode is None:
+        choice = _prompt_choice("Choose mode", 2, default=1)
+        normalized_mode = "guided" if choice == 1 else "manual"
+    if normalized_mode not in {"guided", "manual"}:
+        raise typer.BadParameter("--mode must be 'guided' or 'manual'")
+
+    if normalized_mode == "guided":
+        _guided_queue(database)
+    else:
+        _manual_start_help(database)
+
+    console.print()
+    console.print("[green]Starting VAPTForge platform...[/green]")
+    console.print(f"Dashboard: [link=http://{host}:{port}/]http://{host}:{port}/[/link]")
+    console.print("Press Ctrl+C to stop the local platform.")
+    try:
+        run_platform(database, host=host, port=port, open_browser=browser)
+    except RuntimeError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+
+@app.command("profile-list")
+def profile_list() -> None:
+    """Show the simple assessment profiles available to guided and manual users."""
+    registered = set(_scanner_registry())
+    table = Table(title="VAPTForge Assessment Profiles")
+    table.add_column("Profile")
+    table.add_column("Scanners")
+    table.add_column("Description")
+    for profile in PROFILES.values():
+        selected, skipped = resolve_profile_scanners(
+            profile.name,
+            registered=registered,
+            skip_unavailable=True,
+        )
+        scanner_text = ", ".join(selected) or "none available"
+        if skipped:
+            scanner_text += f"  [yellow](skips: {', '.join(skipped)})[/yellow]"
+        table.add_row(profile.name, scanner_text, profile.description)
+    console.print(table)
 
 
 @app.command()
@@ -150,13 +404,28 @@ def queue_assessment(
     target: str = typer.Argument(...),
     scope_file: Path = typer.Option(..., "--scope", exists=True, readable=True),
     scanners: str = typer.Option("http,tls", "--scanners"),
+    profile: str | None = typer.Option(
+        None,
+        "--profile",
+        help="Use a named profile such as quick, web, network, or full.",
+    ),
     database: Path = typer.Option(Path("vaptforge.db"), "--db"),
 ) -> None:
     """Queue an authorized assessment for the separate local worker."""
     scope = AuthorizedScope.from_json_file(scope_file)
     scope.require_authorized(target)
-    selected = [name.strip().lower() for name in scanners.split(",") if name.strip()]
     registry = _scanner_registry()
+    if profile:
+        try:
+            selected, _skipped = resolve_profile_scanners(
+                profile,
+                registered=set(registry),
+                skip_unavailable=False,
+            )
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+    else:
+        selected = [name.strip().lower() for name in scanners.split(",") if name.strip()]
     if not selected or len(selected) != len(set(selected)):
         raise typer.BadParameter("Select at least one scanner, without duplicates")
     unknown = sorted(set(selected) - set(registry))
