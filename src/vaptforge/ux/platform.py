@@ -6,6 +6,7 @@ import sys
 import webbrowser
 from dataclasses import dataclass
 from pathlib import Path
+from time import sleep
 
 import httpx
 
@@ -86,7 +87,7 @@ def run_platform(
                 if response.status_code == 200:
                     break
             except httpx.HTTPError:
-                pass
+                sleep(0.1)
         else:
             raise RuntimeError("VAPTForge API did not become ready")
 
@@ -98,14 +99,7 @@ def run_platform(
                 raise RuntimeError(f"VAPTForge API exited with code {api.returncode}")
             if worker.poll() is not None:
                 raise RuntimeError(f"VAPTForge worker exited with code {worker.returncode}")
-            api.wait(timeout=1)
-    except subprocess.TimeoutExpired:
-        run_platform(
-            database,
-            host=host,
-            port=port,
-            open_browser=False,
-        )
+            sleep(1)
     except KeyboardInterrupt:
         return
     finally:
