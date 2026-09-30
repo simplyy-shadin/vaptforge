@@ -5,6 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from vaptforge.models.finding import Finding, FindingStatus
+from vaptforge.retest.engine import RetestResult
 
 
 class AssessmentRecord(BaseModel):
@@ -33,4 +34,12 @@ class StatusHistoryRecord(BaseModel):
 
 class ValidationNoteRecord(BaseModel):
     note: str
+    created_at: datetime
+
+
+class RetestRunRecord(BaseModel):
+    id: str
+    before_assessment_id: str
+    after_assessment_id: str
+    results: list[RetestResult]
     created_at: datetime
