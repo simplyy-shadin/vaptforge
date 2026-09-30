@@ -8,6 +8,13 @@
     }
   ],
   "session": {
-    "cookie_env": "VAPTFORGE_DVWA_COOKIE"
-  }
+    "cookie_env": "VAPTFORGE_DVWA_COOKIE",
+    "verify_url": "http://127.0.0.1:4280/index.php",
+    "verify_status": 200,
+    "success_contains": "Welcome to Damn Vulnerable Web Application!"
+  },
+  "crawl_seeds": [
+    "/vulnerabilities/sqli/",
+    "/vulnerabilities/xss_r/"
+  ]
 }
