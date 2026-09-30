@@ -182,7 +182,7 @@ def create_app(
     def add_note(
         finding_id: str,
         request: NoteRequest,
-        _write_access: WriteAccess,
+        _write_access: None = Depends(require_write_access),
     ) -> dict[str, str]:
         try:
             with AssessmentStore(application.state.database_path) as store:
@@ -195,7 +195,7 @@ def create_app(
     def add_evidence(
         finding_id: str,
         request: EvidenceRequest,
-        _write_access: WriteAccess,
+        _write_access: None = Depends(require_write_access),
     ) -> dict[str, str]:
         try:
             with AssessmentStore(application.state.database_path) as store:
