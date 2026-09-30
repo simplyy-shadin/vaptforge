@@ -413,7 +413,7 @@ def queue_assessment(
     profile: str | None = typer.Option(
         None,
         "--profile",
-        help="Use a named profile such as quick, web, network, or full.",
+        help="Use a named profile such as quick, web, network, full, or deep.",
     ),
     database: Path = typer.Option(Path("vaptforge.db"), "--db"),
 ) -> None:
