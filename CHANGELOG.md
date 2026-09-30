@@ -2,6 +2,19 @@
 
 All notable VAPTForge changes are documented here. The project follows semantic versioning for portfolio milestones.
 
+## [0.6.0] - 2026-09-30
+
+### Added
+- Versioned SQLite schema migrations with legacy v0.5 upgrade support and forward-version rejection.
+- Scanner plugin discovery through the `vaptforge.scanners` Python entry-point group.
+- SARIF 2.1.0 export and import normalization.
+- CycloneDX JSON SBOM generation.
+- CLI commands for scanner discovery and database schema status.
+
+### Security
+- External scanner plugins cannot silently replace registered scanner names.
+- Existing authorization enforcement remains part of the scanner plugin contract.
+
 ## [0.5.0] - 2026-09-30
 
 ### Added
