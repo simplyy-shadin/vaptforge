@@ -10,7 +10,6 @@ from vaptforge.models.finding import (
     Severity,
 )
 
-
 _LEVEL_SEVERITY = {
     "error": Severity.HIGH,
     "warning": Severity.MEDIUM,
