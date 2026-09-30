@@ -109,6 +109,7 @@ def render_assessment_dashboard(
 <td><code>{escape(stored.id)}</code></td>
 <td><span class="badge">{escape(finding.severity.label())}</span></td>
 <td>{escape(finding.status.value)}</td>
+<td>{escape(finding.confidence.value) if finding.confidence is not None else "-"}</td>
 <td>{escape(finding.title)}</td>
 <td><code>{escape(finding.location or "N/A")}</code></td>
 <td class="evidence">{evidence}</td>
@@ -172,9 +173,9 @@ def render_assessment_dashboard(
 </form>
 <table>
 <thead>
-<tr><th>ID</th><th>Severity</th><th>Status</th><th>Title</th><th>Location</th><th>Evidence</th></tr>
+<tr><th>ID</th><th>Severity</th><th>Status</th><th>Confidence</th><th>Title</th><th>Location</th><th>Evidence</th></tr>
 </thead>
-<tbody>{"".join(rows) or '<tr><td colspan="6">No findings.</td></tr>'}</tbody>
+<tbody>{"".join(rows) or '<tr><td colspan="7">No findings.</td></tr>'}</tbody>
 </table>
 """
     return _page(f"Assessment - {assessment.name}", content)
