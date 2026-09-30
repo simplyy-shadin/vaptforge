@@ -90,6 +90,6 @@ It also keeps the highest observed severity and strongest lifecycle state.
 - defensive XML parsing through `defusedxml`
 - TLS certificate verification enabled before fallback inspection
 
-## Planned persistence boundary
+## Persistent execution boundary
 
-v0.3 will add a repository/service layer between normalized findings and output. That layer will own assessment IDs, assets, evidence attachments, lifecycle transitions, validation notes, and retest history.
+The synchronous CLI scan remains available. Background execution inserts an assessment job and ordered scanner runs into SQLite. The separately launched local worker obtains an exclusive renewable lease, claims a queued job, revalidates scope, and invokes each scanner sequentially. Each scanner result or error is durable. After completion it correlates and enriches successful findings before saving the assessment. The API/dashboard read the persisted progress, and authenticated mutations can enqueue or request cancellation. Restart recovery retries an interrupted run after the worker lease expires. See [Background jobs](background-jobs.md).

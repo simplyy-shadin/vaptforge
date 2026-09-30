@@ -10,7 +10,7 @@ VAPTForge is a portfolio-grade **Vulnerability Assessment and Penetration Testin
 
 > **Authorized testing only.** Every scan requires explicit scope. Use VAPTForge only on systems you own or have written permission to assess.
 
-## Current release: v0.6.0
+## Current release: v0.7.0
 
 ```text
 AUTHORIZED SCOPE
@@ -61,6 +61,7 @@ MD / JSON / HTML / PDF      FILTER / EXPORT / HISTORY
 
 **Lifecycle**
 - SQLite assessments, assets, findings, evidence, notes, and status history
+- persistent background jobs and per-scanner audit/progress through a separate local worker
 - DISCOVERED -> POTENTIAL -> VERIFIED -> REMEDIATED -> RETESTED
 - FALSE_POSITIVE workflow
 - evidence attachment metadata
@@ -114,6 +115,16 @@ Run and persist an authorized assessment:
 vaptforge scan http://127.0.0.1:3000   --scope config/scope.example.json   --scanners http,httpx,nmap,nuclei,nikto,ffuf   --db data/vaptforge.db   --output reports/initial.md   --json-output reports/initial.json   --html-output reports/initial.html   --pdf-output reports/initial.pdf   --sarif-output reports/initial.sarif
 ```
 
+For background execution, start a worker in a separate terminal and queue a job:
+
+```bash
+vaptforge worker --db data/vaptforge.db
+vaptforge queue-assessment http://127.0.0.1:3000 --scope config/scope.example.json --scanners http,tls --db data/vaptforge.db
+vaptforge job-status <JOB_ID> --db data/vaptforge.db
+```
+
+The dashboard shows scanner states and finding counts as the worker progresses. See [Background jobs](docs/background-jobs.md) for recovery, cancellation, and API usage.
+
 Validate a finding:
 
 ```bash
@@ -155,6 +166,7 @@ See [API and Dashboard](docs/api-dashboard.md).
 - [Scanner extensibility](docs/extensibility.md)
 - [Database migrations](docs/database-migrations.md)
 - [SARIF and SBOM](docs/sarif-sbom.md)
+- [Background jobs](docs/background-jobs.md)
 - [Security policy](SECURITY.md)
 - [Roadmap](ROADMAP.md)
 

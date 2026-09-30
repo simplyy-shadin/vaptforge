@@ -116,6 +116,56 @@ MIGRATIONS = (
             ON scanner_runs(assessment_id, started_at);
         """,
     ),
+    Migration(
+        version=3,
+        name="background-assessment-jobs",
+        sql="""
+        CREATE TABLE assessment_jobs (
+            id TEXT PRIMARY KEY,
+            assessment_id TEXT NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
+            target TEXT NOT NULL,
+            scope_json TEXT NOT NULL,
+            status TEXT NOT NULL,
+            cancel_requested INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            started_at TEXT,
+            finished_at TEXT,
+            error_message TEXT
+        );
+
+        ALTER TABLE scanner_runs RENAME TO scanner_runs_v2;
+        CREATE TABLE scanner_runs (
+            id TEXT PRIMARY KEY,
+            assessment_id TEXT REFERENCES assessments(id) ON DELETE CASCADE,
+            job_id TEXT REFERENCES assessment_jobs(id) ON DELETE CASCADE,
+            position INTEGER,
+            scanner TEXT NOT NULL,
+            target TEXT NOT NULL,
+            status TEXT NOT NULL,
+            started_at TEXT,
+            finished_at TEXT,
+            finding_count INTEGER NOT NULL DEFAULT 0,
+            error_message TEXT,
+            result_json TEXT
+        );
+        INSERT INTO scanner_runs
+            (id, assessment_id, scanner, target, status, started_at,
+             finished_at, finding_count, error_message)
+        SELECT id, assessment_id, scanner, target, status, started_at,
+               finished_at, finding_count, error_message FROM scanner_runs_v2;
+        DROP TABLE scanner_runs_v2;
+        CREATE INDEX idx_scanner_runs_assessment
+            ON scanner_runs(assessment_id, started_at);
+        CREATE INDEX idx_scanner_runs_job ON scanner_runs(job_id, position);
+        CREATE INDEX idx_assessment_jobs_status ON assessment_jobs(status, created_at);
+
+        CREATE TABLE worker_lease (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            owner TEXT NOT NULL,
+            expires_at TEXT NOT NULL
+        );
+        """,
+    ),
 )
 
 SCHEMA_VERSION = MIGRATIONS[-1].version
@@ -138,9 +188,10 @@ def apply_migrations(connection: sqlite3.Connection) -> int:
         if migration.version <= current:
             continue
         try:
-            connection.executescript(migration.sql)
-            connection.execute(f"PRAGMA user_version = {migration.version}")
-            connection.commit()
+            connection.executescript(
+                f"BEGIN IMMEDIATE;\n{migration.sql}\n"
+                f"PRAGMA user_version = {migration.version};\nCOMMIT;"
+            )
         except sqlite3.DatabaseError:
             connection.rollback()
             raise

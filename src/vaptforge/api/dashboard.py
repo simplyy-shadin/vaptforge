@@ -3,6 +3,7 @@ from __future__ import annotations
 from html import escape
 
 from vaptforge.models.assessment import AssessmentRecord, RetestRunRecord, StoredFinding
+from vaptforge.persistence.jobs import AssessmentJob
 from vaptforge.reporting.metrics import finding_metrics, retest_metrics
 
 STYLE = """
@@ -87,12 +88,11 @@ def render_dashboard(
 def render_assessment_dashboard(
     assessment: AssessmentRecord,
     findings: list[StoredFinding],
+    jobs: list[AssessmentJob] | None = None,
 ) -> str:
     metrics = finding_metrics([item.finding for item in findings])
     severity = metrics["severity"]
-    cards = [
-        f'<div class="card"><strong>Total</strong><br>{metrics["total"]}</div>'
-    ]
+    cards = [f'<div class="card"><strong>Total</strong><br>{metrics["total"]}</div>']
     for label in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]:
         cards.append(
             f'<div class="card"><strong>{label}</strong><br>{severity.get(label, 0)}</div>'
@@ -101,9 +101,9 @@ def render_assessment_dashboard(
     rows = []
     for stored in findings:
         finding = stored.finding
-        evidence = "<br>".join(
-            escape(item.summary) for item in finding.evidence[:3]
-        ) or "No evidence"
+        evidence = (
+            "<br>".join(escape(item.summary) for item in finding.evidence[:3]) or "No evidence"
+        )
         rows.append(
             f"""<tr>
 <td><code>{escape(stored.id)}</code></td>
@@ -116,11 +116,32 @@ def render_assessment_dashboard(
         )
 
     assessment_id = escape(assessment.id)
+    job_rows = "".join(
+        f"""<tr><td><code>{escape(job.id)}</code></td>
+<td>{escape(job.status.value)}</td>
+<td>{sum(run.status.value in ("succeeded", "failed", "cancelled") for run in job.scanner_runs)}
+ / {len(job.scanner_runs)}</td>
+<td>{escape(job.error_message or "")}</td></tr>"""
+        for job in jobs or []
+    )
+    run_rows = "".join(
+        f"""<tr><td>{escape(run.scanner)}</td><td>{escape(run.status.value)}</td>
+<td>{run.finding_count}</td><td>{escape(run.error_message or "")}</td></tr>"""
+        for job in jobs or []
+        for run in job.scanner_runs
+    )
     content = f"""
 <p><a href="/">&larr; All assessments</a></p>
 <h1>{escape(assessment.name)}</h1>
 <p><strong>Target:</strong> <code>{escape(assessment.target)}</code></p>
-<div class="cards">{''.join(cards)}</div>
+<div class="cards">{"".join(cards)}</div>
+
+<h2>Assessment jobs</h2>
+<p>Refresh to see scanner progress. Running scans complete before cancellation takes effect.</p>
+<table><thead><tr><th>Job ID</th><th>Status</th><th>Runs completed</th><th>Error</th></tr></thead>
+<tbody>{job_rows or '<tr><td colspan="4">No background jobs.</td></tr>'}</tbody></table>
+<table><thead><tr><th>Scanner</th><th>Status</th><th>Findings</th><th>Error</th></tr></thead>
+<tbody>{run_rows or '<tr><td colspan="4">No scanner runs.</td></tr>'}</tbody></table>
 
 <div class="actions">
 <strong>Exports:</strong>
@@ -153,7 +174,7 @@ def render_assessment_dashboard(
 <thead>
 <tr><th>ID</th><th>Severity</th><th>Status</th><th>Title</th><th>Location</th><th>Evidence</th></tr>
 </thead>
-<tbody>{''.join(rows) or '<tr><td colspan="6">No findings.</td></tr>'}</tbody>
+<tbody>{"".join(rows) or '<tr><td colspan="6">No findings.</td></tr>'}</tbody>
 </table>
 """
     return _page(f"Assessment - {assessment.name}", content)

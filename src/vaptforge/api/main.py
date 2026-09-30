@@ -12,6 +12,8 @@ from pydantic import BaseModel
 from vaptforge import __version__
 from vaptforge.api.dashboard import render_assessment_dashboard, render_dashboard
 from vaptforge.models.finding import Evidence, FindingStatus
+from vaptforge.models.scope import AuthorizedScope
+from vaptforge.persistence.jobs import JobStore
 from vaptforge.persistence.store import AssessmentStore, InvalidStatusTransition
 from vaptforge.reporting.html import render_html_report
 from vaptforge.reporting.markdown import render_markdown_report
@@ -19,6 +21,7 @@ from vaptforge.reporting.metrics import finding_metrics
 from vaptforge.reporting.pdf import render_pdf_bytes
 from vaptforge.reporting.retest_markdown import render_retest_markdown
 from vaptforge.retest.engine import compare_findings
+from vaptforge.scanners.registry import ScannerPluginError, discover_scanners
 
 ApiKeyHeader = Annotated[str | None, Header(alias="X-VAPTForge-API-Key")]
 FilterValue = Annotated[str | None, Query()]
@@ -39,6 +42,12 @@ class EvidenceRequest(BaseModel):
     attachment_path: str | None = None
 
 
+class QueueRequest(BaseModel):
+    target: str
+    scope: AuthorizedScope
+    scanners: list[str]
+
+
 def create_app(
     database_path: str | Path | None = None,
     api_key: str | None = None,
@@ -51,18 +60,14 @@ def create_app(
     application.state.database_path = Path(
         database_path or os.getenv("VAPTFORGE_DB", "vaptforge.db")
     )
-    application.state.api_key = (
-        api_key if api_key is not None else os.getenv("VAPTFORGE_API_KEY")
-    )
+    application.state.api_key = api_key if api_key is not None else os.getenv("VAPTFORGE_API_KEY")
 
     def require_write_access(x_api_key: ApiKeyHeader = None) -> None:
         configured = application.state.api_key
         if not configured:
             raise HTTPException(
                 status_code=403,
-                detail=(
-                    "API mutations are disabled. Set VAPTFORGE_API_KEY or use the CLI."
-                ),
+                detail=("API mutations are disabled. Set VAPTFORGE_API_KEY or use the CLI."),
             )
         if x_api_key is None or not secrets.compare_digest(x_api_key, configured):
             raise HTTPException(status_code=401, detail="Invalid API key")
@@ -82,35 +87,72 @@ def create_app(
         severity: FilterValue = None,
         status: FilterValue = None,
     ) -> str:
-        with AssessmentStore(application.state.database_path) as store:
+        with JobStore(application.state.database_path) as store:
             assessment = store.get_assessment(assessment_id)
             if assessment is None:
                 raise HTTPException(status_code=404, detail="Assessment not found")
             findings = store.list_findings(assessment_id)
+            jobs = store.list_jobs(assessment_id)
 
         normalized_severity = severity.upper() if severity else None
         normalized_status = status.lower() if status else None
         filtered = [
             item
             for item in findings
-            if (
-                normalized_severity is None
-                or item.finding.severity.label() == normalized_severity
-            )
-            and (
-                normalized_status is None
-                or item.finding.status.value == normalized_status
-            )
+            if (normalized_severity is None or item.finding.severity.label() == normalized_severity)
+            and (normalized_status is None or item.finding.status.value == normalized_status)
         ]
-        return render_assessment_dashboard(assessment, filtered)
+        return render_assessment_dashboard(assessment, filtered, jobs)
+
+    @application.post("/api/jobs", status_code=202)
+    def queue_assessment(
+        request: QueueRequest,
+        _write_access: None = Depends(require_write_access),
+    ) -> dict[str, object]:
+        try:
+            request.scope.require_authorized(request.target)
+            registry = discover_scanners()
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        except ScannerPluginError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        if not request.scanners or len(request.scanners) != len(set(request.scanners)):
+            raise HTTPException(status_code=422, detail="Select unique scanner names")
+        unknown = set(request.scanners) - set(registry)
+        if unknown:
+            raise HTTPException(status_code=422, detail=f"Unknown scanners: {sorted(unknown)}")
+        with JobStore(application.state.database_path) as store:
+            job = store.enqueue(request.target, request.scope, request.scanners)
+        return job.model_dump(mode="json")
+
+    @application.get("/api/jobs")
+    def jobs() -> list[dict[str, object]]:
+        with JobStore(application.state.database_path) as store:
+            return [job.model_dump(mode="json") for job in store.list_jobs()]
+
+    @application.get("/api/jobs/{job_id}")
+    def job_detail(job_id: str) -> dict[str, object]:
+        with JobStore(application.state.database_path) as store:
+            job = store.get_job(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return job.model_dump(mode="json")
+
+    @application.post("/api/jobs/{job_id}/cancel")
+    def cancel_job(
+        job_id: str, _write_access: None = Depends(require_write_access)
+    ) -> dict[str, object]:
+        try:
+            with JobStore(application.state.database_path) as store:
+                job = store.cancel(job_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return job.model_dump(mode="json")
 
     @application.get("/api/assessments")
     def assessments() -> list[dict[str, object]]:
         with AssessmentStore(application.state.database_path) as store:
-            return [
-                item.model_dump(mode="json")
-                for item in store.list_assessments()
-            ]
+            return [item.model_dump(mode="json") for item in store.list_assessments()]
 
     @application.get("/api/assessments/{assessment_id}")
     def assessment_detail(assessment_id: str) -> dict[str, object]:
@@ -247,21 +289,15 @@ def create_app(
                 media_type="text/markdown",
             )
         if normalized == "html":
-            return HTMLResponse(
-                render_html_report(assessment.name, assessment.target, findings)
-            )
+            return HTMLResponse(render_html_report(assessment.name, assessment.target, findings))
         if normalized == "json":
-            return JSONResponse(
-                [item.model_dump(mode="json") for item in findings]
-            )
+            return JSONResponse([item.model_dump(mode="json") for item in findings])
         if normalized == "pdf":
             return Response(
                 content=render_pdf_bytes(assessment.name, assessment.target, findings),
                 media_type="application/pdf",
                 headers={
-                    "Content-Disposition": (
-                        f'attachment; filename="vaptforge-{assessment_id}.pdf"'
-                    )
+                    "Content-Disposition": (f'attachment; filename="vaptforge-{assessment_id}.pdf"')
                 },
             )
         raise HTTPException(status_code=404, detail="Unsupported report format")

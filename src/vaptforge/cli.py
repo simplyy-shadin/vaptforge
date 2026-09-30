@@ -11,9 +11,11 @@ from rich.table import Table
 from vaptforge import __version__
 from vaptforge.correlation.engine import correlate_findings
 from vaptforge.enrichment.owasp import enrich_owasp
+from vaptforge.jobs.worker import AssessmentWorker
 from vaptforge.models.finding import Evidence, Finding, FindingStatus
 from vaptforge.models.scope import AuthorizedScope
 from vaptforge.parsers.sarif import parse_sarif
+from vaptforge.persistence.jobs import JobStore, WorkerBusyError
 from vaptforge.persistence.migrations import SCHEMA_VERSION
 from vaptforge.persistence.store import AssessmentStore, InvalidStatusTransition
 from vaptforge.reporting.html import render_html_report
@@ -143,6 +145,63 @@ def scan(
     console.print(f"Markdown report: {output}")
 
 
+@app.command("queue-assessment")
+def queue_assessment(
+    target: str = typer.Argument(...),
+    scope_file: Path = typer.Option(..., "--scope", exists=True, readable=True),
+    scanners: str = typer.Option("http,tls", "--scanners"),
+    database: Path = typer.Option(Path("vaptforge.db"), "--db"),
+) -> None:
+    """Queue an authorized assessment for the separate local worker."""
+    scope = AuthorizedScope.from_json_file(scope_file)
+    scope.require_authorized(target)
+    selected = [name.strip().lower() for name in scanners.split(",") if name.strip()]
+    registry = _scanner_registry()
+    if not selected or len(selected) != len(set(selected)):
+        raise typer.BadParameter("Select at least one scanner, without duplicates")
+    unknown = sorted(set(selected) - set(registry))
+    if unknown:
+        raise typer.BadParameter(f"Unknown scanners: {', '.join(unknown)}")
+    with JobStore(database) as store:
+        job = store.enqueue(target, scope, selected)
+    console.print(f"Queued job: {job.id}\nAssessment ID: {job.assessment_id}")
+
+
+@app.command("worker")
+def worker(
+    database: Path = typer.Option(Path("vaptforge.db"), "--db"),
+    once: bool = typer.Option(False, "--once", help="Process at most one queued job."),
+) -> None:
+    """Run the local assessment worker; start separately from the API."""
+    try:
+        runner = AssessmentWorker(database)
+        if once:
+            job_id = runner.run_once()
+            console.print(f"Processed job: {job_id}" if job_id else "Queue empty")
+        else:
+            console.print(f"Worker polling {database}; Ctrl+C to stop between jobs")
+            runner.run_forever()
+    except WorkerBusyError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+
+@app.command("job-status")
+def job_status(
+    job_id: str = typer.Argument(...),
+    database: Path = typer.Option(Path("vaptforge.db"), "--db"),
+) -> None:
+    """Show durable job and per-scanner progress."""
+    with JobStore(database) as store:
+        job = store.get_job(job_id)
+    if job is None:
+        raise typer.BadParameter(f"Job not found: {job_id}")
+    console.print(f"{job.id}: {job.status.value} (assessment {job.assessment_id})")
+    for run in job.scanner_runs:
+        console.print(f"  {run.scanner}: {run.status.value} ({run.finding_count} findings)")
+    if job.error_message:
+        console.print(f"Error: {job.error_message}")
+
+
 @app.command("scanner-list")
 def scanner_list() -> None:
     """List built-in and externally registered scanner plugins."""
@@ -161,10 +220,7 @@ def db_status(
 ) -> None:
     """Show the SQLite schema version after applying safe migrations."""
     with AssessmentStore(database) as store:
-        console.print(
-            f"Database schema: {store.schema_version}/{SCHEMA_VERSION} "
-            f"({database})"
-        )
+        console.print(f"Database schema: {store.schema_version}/{SCHEMA_VERSION} ({database})")
 
 
 @app.command("sarif-import")
