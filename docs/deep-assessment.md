@@ -152,3 +152,27 @@ Bearer/API sessions are also supported without persistence:
 ```
 
 Do not put raw cookies, bearer tokens, API keys, or CSRF tokens directly in scope JSON. Clear temporary environment variables after the assessment if appropriate.
+
+
+## Session-aware authenticated crawling
+
+Deep mode can reuse an authorized application session while keeping secret values out of VAPTForge persistence. A scope stores only environment-variable references:
+
+```json
+{
+  "session": {
+    "cookie_env": "VAPTFORGE_SESSION_COOKIE"
+  }
+}
+```
+
+Set the actual value in the process environment, then verify readiness:
+
+```powershell
+$env:VAPTFORGE_SESSION_COOKIE="<authorized-session-cookie>"
+python -m vaptforge.cli session-check --scope config/scope.authenticated.example.json
+```
+
+The launcher/worker inherits the environment. VAPTForge resolves the value only when the native Deep HTTP client makes requests. Scope JSON and SQLite job state contain the environment-variable name, not the secret value.
+
+Authorization-header and custom-header references are also supported through `authorization_env` and `headers_env`. Missing configured variables fail closed. Do not place raw session values directly in scope files.
