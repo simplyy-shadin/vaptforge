@@ -52,7 +52,6 @@ def _scanner_registry() -> dict[str, Scanner]:
         raise typer.BadParameter(str(exc)) from exc
 
 
-
 def _prompt_choice(prompt: str, count: int, *, default: int = 1) -> int:
     while True:
         raw = typer.prompt(prompt, default=str(default))
