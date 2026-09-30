@@ -3,6 +3,29 @@ from __future__ import annotations
 import json
 
 from vaptforge.models.finding import AssetRef, Evidence, Finding, Severity
+from vaptforge.risk.cvss import CvssVectorError, score_cvss_v31
+
+
+def _cvss_data(classification: dict[str, object]) -> tuple[str | None, float | None]:
+    raw_vector = classification.get("cvss-metrics")
+    vector = str(raw_vector) if raw_vector else None
+
+    raw_score = classification.get("cvss-score")
+    score: float | None = None
+    if isinstance(raw_score, (int, float)):
+        score = float(raw_score)
+    elif isinstance(raw_score, str):
+        try:
+            score = float(raw_score)
+        except ValueError:
+            score = None
+
+    if score is None and vector:
+        try:
+            score = score_cvss_v31(vector)
+        except CvssVectorError:
+            score = None
+    return vector, score
 
 
 def parse_nuclei_jsonl(text: str, *, target: str) -> list[Finding]:
@@ -20,6 +43,7 @@ def parse_nuclei_jsonl(text: str, *, target: str) -> list[Finding]:
         if isinstance(cwes, str):
             cwes = [cwes]
 
+        vector, score = _cvss_data(classification)
         matched_at = item.get("matched-at") or item.get("host") or target
         findings.append(
             Finding(
@@ -46,6 +70,8 @@ def parse_nuclei_jsonl(text: str, *, target: str) -> list[Finding]:
                         ),
                     )
                 ],
+                cvss_vector=vector,
+                cvss_score=score,
                 metadata={"template_id": item.get("template-id"), "type": item.get("type")},
             )
         )
