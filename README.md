@@ -10,7 +10,7 @@ VAPTForge is a portfolio-grade **Vulnerability Assessment and Penetration Testin
 
 > **Authorized testing only.** Every scan requires explicit scope. Use VAPTForge only on systems you own or have written permission to assess.
 
-## Current release: v0.5.0
+## Current release: v0.6.0
 
 ```text
 AUTHORIZED SCOPE
@@ -40,6 +40,7 @@ MD / JSON / HTML / PDF      FILTER / EXPORT / HISTORY
 - Python-native HTTP header, cookie, CORS, method, and TLS checks
 - Nmap, Nuclei, Nikto, ffuf, and ProjectDiscovery httpx adapters
 - machine-readable parser layer
+- pluggable scanner SDK via `vaptforge.scanners` Python entry points
 
 **Safety**
 - mandatory explicit scope
@@ -74,8 +75,14 @@ MD / JSON / HTML / PDF      FILTER / EXPORT / HISTORY
 - JSON
 - standalone HTML
 - PDF (ReportLab)
+- SARIF 2.1.0 import/export
 - executive severity metrics
 - sanitized example report
+
+**Supply chain and compatibility**
+- versioned SQLite migrations with forward-version protection
+- CycloneDX JSON SBOM generation
+- scanner plugin collision protection
 
 **Dashboard/API**
 - local assessment dashboard
@@ -104,7 +111,7 @@ docker compose -f labs/docker-compose.yml up -d
 Run and persist an authorized assessment:
 
 ```bash
-vaptforge scan http://127.0.0.1:3000   --scope config/scope.example.json   --scanners http,httpx,nmap,nuclei,nikto,ffuf   --db data/vaptforge.db   --output reports/initial.md   --json-output reports/initial.json   --html-output reports/initial.html   --pdf-output reports/initial.pdf
+vaptforge scan http://127.0.0.1:3000   --scope config/scope.example.json   --scanners http,httpx,nmap,nuclei,nikto,ffuf   --db data/vaptforge.db   --output reports/initial.md   --json-output reports/initial.json   --html-output reports/initial.html   --pdf-output reports/initial.pdf   --sarif-output reports/initial.sarif
 ```
 
 Validate a finding:
@@ -145,6 +152,9 @@ See [API and Dashboard](docs/api-dashboard.md).
 - [Assessment lifecycle](docs/assessment-lifecycle.md)
 - [Retesting and reporting](docs/retesting.md)
 - [API and dashboard](docs/api-dashboard.md)
+- [Scanner extensibility](docs/extensibility.md)
+- [Database migrations](docs/database-migrations.md)
+- [SARIF and SBOM](docs/sarif-sbom.md)
 - [Security policy](SECURITY.md)
 - [Roadmap](ROADMAP.md)
 
@@ -157,7 +167,7 @@ pytest
 
 GitHub Actions tests Python 3.12 and 3.13. A separate workflow runs `pip-audit`.
 
-The test suite covers authorization, parser normalization, custom HTTP/TLS checks, correlation, CVSS, OWASP enrichment, SQLite lifecycle persistence, retest classification, HTML/PDF generation, FastAPI endpoints, API mutation security, report exports, and dashboard rendering.
+The test suite covers authorization, parser normalization, custom HTTP/TLS checks, correlation, CVSS, OWASP enrichment, SQLite migrations/lifecycle persistence, scanner plugin loading, SARIF interchange, SBOM generation, retest classification, HTML/PDF generation, FastAPI endpoints, API mutation security, report exports, and dashboard rendering.
 
 ## Portfolio positioning
 
