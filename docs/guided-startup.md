@@ -1,6 +1,6 @@
 # Guided Startup (v0.9)
 
-VAPTForge v0.8 makes the safe path the easiest path. New users can start with one command:
+VAPTForge v0.9 makes the safe path the easiest path. New users can start with one command:
 
 ```bash
 vaptforge start
@@ -45,7 +45,8 @@ The original `--scanners` option remains available for exact scanner selection.
 | `quick` | Fast baseline with no external binaries required | HTTP, TLS |
 | `web` | Web application assessment | HTTP, TLS, httpx, Nikto, Nuclei, ffuf |
 | `network` | Host/service-oriented assessment | Nmap, Nuclei |
-| `full` | Complete baseline authorized assessment | HTTP, TLS, httpx, Nmap, Nikto, Nuclei, ffuf |\n| `deep` | Bounded native attack-surface and vulnerability-candidate analysis plus the full stack | HTTP, TLS, deep-web, httpx, Nmap, Nikto, Nuclei, ffuf |
+| `full` | Complete baseline authorized assessment | HTTP, TLS, httpx, Nmap, Nikto, Nuclei, ffuf |
+| `deep` | Bounded native attack-surface and vulnerability-candidate analysis plus the full stack | HTTP, TLS, deep-web, httpx, Nmap, Nikto, Nuclei, ffuf |
 
 Run:
 
