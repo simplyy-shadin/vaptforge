@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import shutil
 from dataclasses import dataclass
+
+from vaptforge.ux.tooling import probe_scanner_tool
 
 
 @dataclass(frozen=True)
@@ -39,15 +40,6 @@ PROFILES: dict[str, AssessmentProfile] = {
     ),
 }
 
-SCANNER_BINARIES: dict[str, str] = {
-    "httpx": "httpx",
-    "nmap": "nmap",
-    "nikto": "nikto",
-    "nuclei": "nuclei",
-    "ffuf": "ffuf",
-}
-
-
 def profile_names() -> tuple[str, ...]:
     return tuple(PROFILES)
 
@@ -60,11 +52,6 @@ def get_profile(name: str) -> AssessmentProfile:
         raise ValueError(
             f"Unknown profile '{name}'. Choose one of: {', '.join(PROFILES)}"
         ) from exc
-
-
-def scanner_available(scanner: str) -> bool:
-    binary = SCANNER_BINARIES.get(scanner)
-    return binary is None or shutil.which(binary) is not None
 
 
 def resolve_profile_scanners(
@@ -81,9 +68,11 @@ def resolve_profile_scanners(
         if scanner not in registered:
             skipped.append(f"{scanner} (not registered)")
             continue
-        if skip_unavailable and not scanner_available(scanner):
-            skipped.append(f"{scanner} (tool not installed)")
-            continue
+        if skip_unavailable:
+            probe = probe_scanner_tool(scanner)
+            if not probe.available:
+                skipped.append(f"{scanner} ({probe.detail})")
+                continue
         selected.append(scanner)
 
     return selected, skipped

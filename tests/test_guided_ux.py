@@ -22,7 +22,17 @@ def test_root_help_supports_short_h() -> None:
 
 
 def test_profiles_are_simple_named_scanner_sets(monkeypatch) -> None:
-    monkeypatch.setattr("vaptforge.ux.profiles.shutil.which", lambda name: None)
+    monkeypatch.setattr(
+        "vaptforge.ux.profiles.probe_scanner_tool",
+        lambda name: type(
+            "Probe",
+            (),
+            {
+                "available": name in {"http", "tls"},
+                "detail": "tool not installed",
+            },
+        )(),
+    )
 
     profile = get_profile("web")
     selected, skipped = resolve_profile_scanners(
@@ -102,7 +112,17 @@ def test_guided_start_queues_and_launches_platform(tmp_path: Path, monkeypatch) 
         "vaptforge.cli.run_platform",
         lambda db, host, port, open_browser: calls.append((db, host, port, open_browser)),
     )
-    monkeypatch.setattr("vaptforge.ux.profiles.shutil.which", lambda name: None)
+    monkeypatch.setattr(
+        "vaptforge.ux.profiles.probe_scanner_tool",
+        lambda name: type(
+            "Probe",
+            (),
+            {
+                "available": name in {"http", "tls"},
+                "detail": "tool not installed",
+            },
+        )(),
+    )
 
     result = runner.invoke(
         app,
@@ -142,3 +162,53 @@ def test_platform_commands_use_current_python_and_separate_worker(tmp_path: Path
     assert "uvicorn" in commands.api
     assert "--host" in commands.api
     assert "127.0.0.1" in commands.api
+
+
+def test_python_httpx_cli_is_rejected(monkeypatch) -> None:
+    from subprocess import CompletedProcess
+
+    from vaptforge.ux.tooling import probe_scanner_tool
+
+    monkeypatch.setattr(
+        "vaptforge.ux.tooling.shutil.which",
+        lambda name: "C:/venv/Scripts/httpx.exe" if name == "httpx" else None,
+    )
+    monkeypatch.setattr(
+        "vaptforge.ux.tooling.subprocess.run",
+        lambda *args, **kwargs: CompletedProcess(
+            args[0],
+            2,
+            stdout="Usage: httpx [OPTIONS] URL",
+            stderr="Error: No such option '-e'.",
+        ),
+    )
+
+    probe = probe_scanner_tool("httpx")
+
+    assert probe.available is False
+    assert "Python httpx CLI detected" in probe.detail
+
+
+def test_projectdiscovery_httpx_is_accepted(monkeypatch) -> None:
+    from subprocess import CompletedProcess
+
+    from vaptforge.ux.tooling import probe_scanner_tool
+
+    monkeypatch.setattr(
+        "vaptforge.ux.tooling.shutil.which",
+        lambda name: "C:/Tools/httpx.exe" if name == "httpx" else None,
+    )
+    monkeypatch.setattr(
+        "vaptforge.ux.tooling.subprocess.run",
+        lambda *args, **kwargs: CompletedProcess(
+            args[0],
+            0,
+            stdout="[INF] Current Version: v1.12.0",
+            stderr="",
+        ),
+    )
+
+    probe = probe_scanner_tool("httpx")
+
+    assert probe.available is True
+    assert "ProjectDiscovery" in probe.detail

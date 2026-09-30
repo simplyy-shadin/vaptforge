@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import shutil
 from pathlib import Path
 
 import typer
@@ -31,6 +30,7 @@ from vaptforge.scanners.registry import ScannerPluginError, discover_scanners
 from vaptforge.ux.guided import discover_scope_files, safe_scope_filename, target_suggestions
 from vaptforge.ux.platform import run_platform
 from vaptforge.ux.profiles import PROFILES, resolve_profile_scanners
+from vaptforge.ux.tooling import probe_scanner_tool
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -305,8 +305,14 @@ def doctor() -> None:
     table = Table(title="VAPTForge Tool Check")
     table.add_column("Tool")
     table.add_column("Status")
+    table.add_column("Details")
     for tool in ["nmap", "nuclei", "nikto", "ffuf", "httpx"]:
-        table.add_row(tool, "available" if shutil.which(tool) else "not installed")
+        probe = probe_scanner_tool(tool)
+        table.add_row(
+            tool,
+            "available" if probe.available else "unavailable",
+            probe.detail,
+        )
     console.print(table)
 
 
