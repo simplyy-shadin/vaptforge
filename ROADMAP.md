@@ -18,13 +18,16 @@
 - [x] Target normalization for host-based scanners
 - [x] Basic HTTP reconnaissance module
 - [x] Security-header checks
-- [ ] Cookie security checks
-- [ ] CORS checks
-- [ ] HTTP method checks
-- [ ] TLS checks
-- [ ] Nikto adapter
-- [ ] ffuf adapter
-- [ ] httpx adapter
+- [x] Cookie security checks
+- [x] CORS checks
+- [x] HTTP method checks
+- [x] TLS checks
+- [x] Nikto adapter/parser
+- [x] ffuf adapter/parser
+- [x] httpx adapter/parser
+- [x] Cross-scanner CVE correlation
+- [x] Evidence deduplication
+- [x] Conservative POTENTIAL status for scanner observations
 
 ## v0.3 — Assessment lifecycle
 
