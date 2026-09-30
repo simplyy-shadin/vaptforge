@@ -142,6 +142,7 @@ def crawl_target(
     scope: AuthorizedScope,
     *,
     client: httpx.Client | None = None,
+    seed_urls: list[str] | None = None,
     max_pages: int = 40,
     max_depth: int = 2,
     max_scripts: int = 12,
@@ -154,6 +155,15 @@ def crawl_target(
     start_origin = _origin(start_url)
     result = CrawlResult()
     queue: deque[tuple[str, int]] = deque([(start_url, 0)])
+    for seed in seed_urls or []:
+        resolved_seed = _normalize_url(urljoin(start_url, seed))
+        if not _safe_same_origin_url(resolved_seed, start_origin):
+            raise PermissionError(
+                f"Crawl seed '{seed}' is outside the target origin or is state-changing"
+            )
+        scope.require_authorized(resolved_seed)
+        queue.append((resolved_seed, 0))
+
     visited: set[str] = set()
     seen_parameters: set[tuple[str, str, str]] = set()
     seen_forms: set[tuple[str, str, tuple[str, ...]]] = set()
