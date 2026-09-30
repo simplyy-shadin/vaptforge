@@ -1,0 +1,12 @@
+{
+  "host": "127.0.0.1",
+  "vulnerabilities": [
+    {
+      "id": "999001",
+      "method": "GET",
+      "url": "/legacy",
+      "msg": "Example component reference CVE-2024-12345 requires validation.",
+      "references": ["https://example.test/advisory/CVE-2024-12345"]
+    }
+  ]
+}

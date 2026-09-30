@@ -13,12 +13,29 @@ from vaptforge.correlation.engine import correlate_findings
 from vaptforge.models.finding import Finding
 from vaptforge.models.scope import AuthorizedScope
 from vaptforge.reporting.markdown import render_markdown_report
+from vaptforge.scanners.base import Scanner
+from vaptforge.scanners.ffuf import FfufScanner
 from vaptforge.scanners.http_security import HttpSecurityScanner
+from vaptforge.scanners.httpx_probe import HttpxScanner
+from vaptforge.scanners.nikto import NiktoScanner
 from vaptforge.scanners.nmap import NmapScanner
 from vaptforge.scanners.nuclei import NucleiScanner
+from vaptforge.scanners.tls_security import TlsSecurityScanner
 
 app = typer.Typer(no_args_is_help=True, help="Authorized VAPT orchestration and reporting.")
 console = Console()
+
+
+def _scanner_registry() -> dict[str, Scanner]:
+    return {
+        "http": HttpSecurityScanner(),
+        "tls": TlsSecurityScanner(),
+        "httpx": HttpxScanner(),
+        "nmap": NmapScanner(),
+        "nuclei": NucleiScanner(),
+        "nikto": NiktoScanner(),
+        "ffuf": FfufScanner(),
+    }
 
 
 @app.command()
@@ -33,7 +50,7 @@ def doctor() -> None:
     table = Table(title="VAPTForge Tool Check")
     table.add_column("Tool")
     table.add_column("Status")
-    for tool in ["nmap", "nuclei", "nikto", "ffuf"]:
+    for tool in ["nmap", "nuclei", "nikto", "ffuf", "httpx"]:
         table.add_row(tool, "available" if shutil.which(tool) else "not installed")
     console.print(table)
 
@@ -57,7 +74,9 @@ def scan(
     target: str = typer.Argument(...),
     scope_file: Path = typer.Option(..., "--scope", exists=True, readable=True),
     scanners: str = typer.Option(
-        "http,nmap,nuclei", "--scanners", help="Comma-separated scanner names."
+        "http,tls",
+        "--scanners",
+        help="Comma-separated scanner names.",
     ),
     output: Path = typer.Option(Path("assessment-report.md"), "--output"),
     json_output: Path | None = typer.Option(None, "--json-output"),
@@ -66,7 +85,7 @@ def scan(
     scope = AuthorizedScope.from_json_file(scope_file)
     scope.require_authorized(target)
 
-    registry = {"http": HttpSecurityScanner(), "nmap": NmapScanner(), "nuclei": NucleiScanner()}
+    registry = _scanner_registry()
     selected = [name.strip().lower() for name in scanners.split(",") if name.strip()]
     unknown = sorted(set(selected) - set(registry))
     if unknown:
@@ -78,11 +97,14 @@ def scan(
         findings.extend(registry[name].scan(target, scope))
 
     findings = correlate_findings(findings)
+    output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         render_markdown_report(scope.assessment_name, target, findings),
         encoding="utf-8",
     )
+
     if json_output:
+        json_output.parent.mkdir(parents=True, exist_ok=True)
         json_output.write_text(
             json.dumps([item.model_dump(mode="json") for item in findings], indent=2),
             encoding="utf-8",

@@ -1,0 +1,16 @@
+admin
+api
+assets
+backup
+config
+dashboard
+docs
+.git
+.env
+health
+login
+openapi.json
+phpinfo.php
+robots.txt
+swagger
+uploads

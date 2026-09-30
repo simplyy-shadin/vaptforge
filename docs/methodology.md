@@ -4,32 +4,60 @@ VAPTForge follows an assessment lifecycle rather than treating vulnerability sca
 
 ## 1. Authorization and scope
 
-Document the assessment name, permission reference, in-scope assets, exclusions, testing window, and prohibited actions. VAPTForge currently enforces the in-scope target list at execution time.
+Document the assessment name, permission reference, in-scope assets, exclusions, testing window, and prohibited actions. VAPTForge enforces the in-scope target list before execution.
 
-## 2. Reconnaissance and enumeration
+## 2. Reconnaissance
 
-Identify reachable services and relevant application surfaces using non-destructive discovery. Record protocol, port, service, product, and version evidence where available.
+Use service and HTTP discovery to understand the exposed surface. In v0.2 this can include Nmap and httpx metadata.
 
-## 3. Vulnerability discovery
+## 3. Configuration assessment
 
-Run selected scanners and custom checks. Prefer machine-readable outputs so results can be normalized and independently reviewed.
+Python-native checks review:
 
-## 4. Triage and correlation
+- HTTP response security headers
+- sensitive cookie attributes
+- CORS origin handling
+- TRACE exposure
+- TLS validation, expiry, protocol and cipher observations
 
-Combine duplicate or overlapping scanner observations into one finding record. Preserve evidence and scanner provenance.
+These findings remain DISCOVERED or POTENTIAL until reviewed.
 
-## 5. Manual validation
+## 4. Vulnerability discovery
 
-A scanner result remains `DISCOVERED` or `POTENTIAL` until the tester has enough evidence to confirm it. Findings that cannot be reproduced can be marked `FALSE_POSITIVE`.
+Selected tools can extend coverage:
 
-## 6. Risk classification
+- Nuclei for template-based checks
+- Nikto for web-server observations
+- ffuf for controlled content discovery
 
-Use technical severity together with context such as exposure, exploitability, asset value, and realistic impact. CVSS support is planned; scanner-provided severity is currently retained as an input, not treated as a final business-risk verdict.
+Tool output is normalized instead of copied directly into the final report.
 
-## 7. Reporting
+## 5. Triage and correlation
 
-Each report should clearly describe affected assets, evidence, impact, remediation, and validation status. Sensitive raw evidence should be sanitized before a report is shared publicly.
+Combine duplicate or overlapping scanner observations while preserving scanner provenance and evidence. CVE matches on the same host/port can be correlated across tools.
 
-## 8. Remediation and retesting
+## 6. Manual validation
 
-After remediation, rerun the relevant checks and compare finding fingerprints and evidence. The planned retest engine will track fixed, persistent, new, and changed findings.
+A scanner result is not proof of exploitability. Review the affected endpoint, evidence, preconditions, version information, and application behavior before promoting a finding to VERIFIED. Unreproducible observations can be marked FALSE_POSITIVE.
+
+## 7. Risk classification
+
+Technical severity is an input, not a substitute for context. Consider exposure, prerequisites, asset importance, data sensitivity, realistic impact, and compensating controls. CVSS support is planned for v0.3.
+
+## 8. Reporting
+
+For each reportable issue capture:
+
+- affected asset and location
+- description
+- evidence
+- severity
+- CWE/OWASP/CVE mappings where defensible
+- remediation guidance
+- validation status
+
+Sanitize sensitive evidence before publishing example reports.
+
+## 9. Remediation and retesting
+
+After remediation, rerun only the relevant authorized checks, compare the normalized finding/evidence state, and classify findings as fixed, persistent, changed, or new. Automated retest comparison is planned for v0.4.

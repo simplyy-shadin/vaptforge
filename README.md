@@ -1,78 +1,124 @@
 # VAPTForge
 
-VAPTForge is a portfolio-grade **Vulnerability Assessment and Penetration Testing orchestration framework** for authorized labs and environments. It focuses on repeatable assessment workflows, explicit scope enforcement, normalized findings, evidence correlation, and professional reporting instead of simply wrapping scanner commands.
+VAPTForge is a portfolio-grade **Vulnerability Assessment and Penetration Testing orchestration framework** for authorized labs and environments. It combines custom web/TLS checks with established assessment tools, normalizes their output, correlates overlapping evidence, and generates repeatable VAPT reports.
 
-> **Authorized testing only.** VAPTForge refuses to scan targets that are not explicitly present in the supplied scope file. Use it only on systems you own or have written permission to assess.
+> **Authorized testing only.** Every scan requires an explicit scope file. Use VAPTForge only on systems you own or have written permission to assess.
 
 ## Why this project exists
 
-Real VAPT work is more than running scanners. A useful assessment needs controlled scope, reproducible evidence, manual validation, finding normalization, risk classification, remediation guidance, and retesting. VAPTForge is being built around that lifecycle.
+Professional VAPT work is not finished when a scanner exits. A useful assessment needs authorization, repeatable reconnaissance, evidence preservation, false-positive review, finding correlation, remediation guidance, and retesting.
 
 ```text
-Authorization -> Scope Validation -> Recon/Scanning -> Parsing
-      -> Normalization -> Correlation -> Validation -> Reporting -> Retest
+Authorization
+     |
+     v
+Scope Enforcement
+     |
+     v
+Recon + Web/TLS Assessment
+     |
+     v
+Machine-readable Parsers
+     |
+     v
+Normalized Findings
+     |
+     v
+Correlation + Evidence
+     |
+     v
+Manual Validation
+     |
+     v
+Reporting -> Remediation -> Retest
 ```
 
-## Current release: v0.1.0
+## Current release: v0.2.0
 
-The first milestone provides:
+### Built-in checks
 
-- Explicit JSON-based authorization/scope gate
-- Safe subprocess execution (`shell=False`)
-- Nmap service-enumeration adapter
-- Nuclei adapter with disruptive tags excluded by default
-- Built-in HTTP security-header checks (no external scanner required)
-- Structured Nmap XML and Nuclei JSONL parsing
-- Common Pydantic finding model
-- Finding fingerprinting and duplicate correlation
-- Markdown VAPT report generation
-- Optional JSON findings export
-- CLI (`vaptforge`)
-- FastAPI health endpoint
-- Local DVWA + OWASP Juice Shop Docker lab
-- Unit tests and GitHub Actions CI
-- Scheduled dependency audit workflow
+VAPTForge includes Python-native checks that work without third-party scanners:
+
+- HTTP security headers
+- session/authentication cookie attributes
+- CORS origin reflection
+- HTTP TRACE exposure
+- TLS certificate validation
+- certificate expiration
+- deprecated negotiated TLS versions
+- weak negotiated cipher indicators
+
+The checks use conservative lifecycle states: scanner observations are not automatically treated as verified vulnerabilities.
+
+### External scanner adapters
+
+| Adapter | Purpose | Machine-readable input |
+|---|---|---|
+| Nmap | service enumeration | XML |
+| Nuclei | template-based vulnerability discovery | JSONL |
+| Nikto | web-server assessment | JSON |
+| ffuf | controlled content discovery | JSON |
+| httpx | HTTP reconnaissance and technology metadata | JSONL |
+
+Nuclei excludes `dos`, `fuzz`, and `bruteforce` tags by default. ffuf uses a small bundled wordlist, a request-rate limit, limited concurrency, and a fixed runtime cap.
+
+## Key engineering features
+
+- explicit JSON authorization/scope gate
+- exact host/IP and CIDR scope matching
+- subprocess execution with `shell=False`
+- separate scanner and parser layers
+- common Pydantic finding/evidence model
+- deterministic finding fingerprints
+- cross-scanner CVE correlation
+- evidence deduplication
+- finding lifecycle states
+- CWE / OWASP / CVE fields
+- Markdown and JSON output
+- FastAPI foundation
+- Docker training lab
+- pytest + Ruff CI across Python 3.12 and 3.13
+- scheduled dependency auditing
 
 ## Architecture
 
 ```text
-                        +------------------+
-                        | Authorized Scope |
-                        +---------+--------+
-                                  |
-                                  v
-+---------+      +----------------+----------------+
-|   CLI   |----->|         Scanner Registry       |
-+---------+      +-----------+----------+----------+
-                            /            \
-                           v              v
-                     +----------+    +----------+
-                     |   Nmap   |    |  Nuclei  |
-                     +----+-----+    +----+-----+
-                          |               |
-                          v               v
-                    XML Parser       JSONL Parser
-                          \               /
-                           v             v
-                         +---------------+
-                         | Normalization |
-                         +-------+-------+
-                                 |
-                                 v
-                         +---------------+
-                         | Correlation   |
-                         +-------+-------+
-                                 |
-                     +-----------+-----------+
-                     v                       v
-                JSON Findings          Markdown Report
+                            +------------------+
+                            | Authorized Scope |
+                            +---------+--------+
+                                      |
+                                      v
++---------+            +--------------+--------------+
+| CLI/API |----------->|       Scanner Registry     |
++---------+            +--------------+--------------+
+                                      |
+       +----------+-----------+-------+-------+----------+-----------+
+       |          |           |               |          |           |
+       v          v           v               v          v           v
+     HTTP        TLS        Nmap            Nuclei     Nikto       ffuf/httpx
+       |          |           |               |          |           |
+       |          |           v               v          v           v
+       |          |       XML parser       JSONL      JSON         JSON(L)
+       |          |           \               |          /           /
+       +----------+------------+---------------+---------+----------+
+                                      |
+                                      v
+                              Normalized Finding[]
+                                      |
+                                      v
+                           Correlation + Evidence
+                                      |
+                         +------------+------------+
+                         v                         v
+                    JSON export              Markdown report
 ```
 
-See [`docs/architecture.md`](docs/architecture.md) for design details.
+See [`docs/architecture.md`](docs/architecture.md) and
+[`docs/methodology.md`](docs/methodology.md).
 
 ## Quick start
 
-### 1. Install VAPTForge
+### Install
 
 ```bash
 python -m venv .venv
@@ -82,57 +128,77 @@ source .venv/bin/activate       # Linux/macOS
 pip install -e ".[dev]"
 ```
 
-External tools are intentionally not hidden behind Python packages. Install only the scanners you intend to use, then check them with:
+Check optional tools:
 
 ```bash
 vaptforge doctor
 ```
 
-### 2. Start the local vulnerable lab
+### Start the local vulnerable lab
 
 ```bash
 docker compose -f labs/docker-compose.yml up -d
 ```
 
-The lab binds only to loopback by default:
+The bundled training applications bind only to loopback:
 
 - OWASP Juice Shop: `http://127.0.0.1:3000`
 - DVWA: `http://127.0.0.1:4280`
 
-### 3. Review the authorized scope
+### Validate scope
 
 ```bash
-cat config/scope.example.json
-vaptforge scope-check http://127.0.0.1:3000 --scope config/scope.example.json
+vaptforge scope-check   http://127.0.0.1:3000   --scope config/scope.example.json
 ```
 
-### 4. Run an assessment
+Out-of-scope targets are rejected before scanner execution.
 
-Nmap only:
+### Built-in assessment
 
 ```bash
-vaptforge scan 127.0.0.1 \
-  --scope config/scope.example.json \
-  --scanners nmap \
-  --output reports/local-nmap.md \
-  --json-output reports/local-nmap.json
+vaptforge scan http://127.0.0.1:3000   --scope config/scope.example.json   --scanners http,tls   --output reports/builtin.md   --json-output reports/builtin.json
 ```
 
-Built-in HTTP checks + Nmap + Nuclei:
+### Full lab assessment
+
+Install the external tools you want to use, verify them with `vaptforge doctor`, then select them explicitly:
 
 ```bash
-vaptforge scan http://127.0.0.1:3000 \
-  --scope config/scope.example.json \
-  --scanners http,nmap,nuclei \
-  --output reports/juice-shop.md \
-  --json-output reports/juice-shop.json
+vaptforge scan http://127.0.0.1:3000   --scope config/scope.example.json   --scanners http,tls,httpx,nmap,nuclei,nikto,ffuf   --output reports/juice-shop.md   --json-output reports/juice-shop.json
 ```
 
-> VAPTForge normalizes URL targets for host-based scanners while preserving the original scope check.
+## Finding lifecycle
 
-## Scope file
+```text
+DISCOVERED -> POTENTIAL -> VERIFIED -> REMEDIATED -> RETESTED
+                         \-> FALSE_POSITIVE
+```
 
-Every scan requires a scope file:
+Examples:
+
+- an open Nmap service is normally `DISCOVERED`
+- a Nikto observation is `POTENTIAL`
+- a reflected arbitrary CORS origin is `POTENTIAL`
+- only tester-reviewed evidence should promote a finding to `VERIFIED`
+
+The v0.3 milestone will persist these transitions and validation notes.
+
+## Correlation
+
+VAPTForge keeps scanner provenance instead of hiding it. Exact duplicate findings use deterministic fingerprints. Findings that identify the same CVE on the same host/port are correlated across scanners even when their titles differ.
+
+The resulting record retains:
+
+- highest observed severity
+- strongest lifecycle state
+- unique evidence
+- unique references
+- CVE/CWE/OWASP mappings
+- source scanner list
+
+This reduces duplicate report noise while preserving the evidence trail.
+
+## Scope format
 
 ```json
 {
@@ -145,31 +211,7 @@ Every scan requires a scope file:
 }
 ```
 
-An out-of-scope target is rejected before any scanner is executed.
-
-## Finding model
-
-VAPTForge normalizes scanner-specific output into one structure containing:
-
-- title and severity
-- affected asset and location
-- source scanner
-- lifecycle status
-- CVE/CWE/OWASP mappings
-- references and tags
-- evidence
-- remediation
-- tool-specific metadata
-- deterministic fingerprint for correlation
-
-The intended lifecycle is:
-
-```text
-DISCOVERED -> POTENTIAL -> VERIFIED -> REMEDIATED -> RETESTED
-                         \-> FALSE_POSITIVE
-```
-
-Scanner output is not automatically treated as a confirmed vulnerability.
+Hostname scope entries use exact matching. Wildcard expansion is intentionally not implicit.
 
 ## Testing
 
@@ -178,60 +220,39 @@ pytest
 ruff check .
 ```
 
-Current test coverage includes scope authorization, Nmap parsing, Nuclei normalization, duplicate correlation, and report generation.
+Test coverage includes authorization, Nmap/Nuclei/Nikto/ffuf/httpx parsing, HTTP controls, TLS analysis, correlation, and reporting.
 
 ## API
-
-Run the development API:
 
 ```bash
 uvicorn vaptforge.api.main:app --reload
 ```
 
-Health endpoint:
+Current endpoint:
 
 ```text
 GET /health
 ```
 
-The API will later expose assessments, assets, findings, validation state, evidence, and retest history.
-
-## Roadmap
-
-The next milestones are intentionally VAPT-focused:
-
-1. Assessment workspace and persistent assessment IDs
-2. Expand built-in HTTP checks to cookie/CORS/method analysis
-3. Nikto, ffuf, httpx, and TLS adapters
-4. CVSS v3.1/v4 scoring support and OWASP/CWE enrichment
-5. Manual validation workflow with evidence attachments
-6. SQLite persistence and finding lifecycle history
-7. Retest/delta engine for before-vs-after remediation
-8. HTML/PDF professional report templates
-9. FastAPI assessment API and dashboard
-10. Sanitized demo assessment against the bundled lab
-
-See [`ROADMAP.md`](ROADMAP.md).
+Assessment, finding, evidence, validation, and retest APIs are planned for the persistence milestone.
 
 ## Project boundaries
 
-VAPTForge is designed as an **authorized assessment framework**, not an exploitation or evasion framework. Default adapters prioritize enumeration and vulnerability discovery. Potentially disruptive scan categories such as DoS, fuzzing, and brute force are excluded from the default Nuclei execution path.
+VAPTForge is an **authorized assessment framework**, not an exploitation or evasion framework. Its defaults emphasize discovery, configuration assessment, evidence collection, and validation. Disruptive scan behavior is excluded or constrained by default.
 
-## Portfolio value
+## Roadmap
 
-This project is designed to demonstrate:
+- **v0.1:** core orchestration, scope, Nmap/Nuclei, reporting
+- **v0.2:** web/TLS checks, Nikto/ffuf/httpx, stronger correlation
+- **v0.3:** SQLite assessment lifecycle, validation, CVSS and enrichment
+- **v0.4:** remediation retesting and professional HTML/PDF reporting
+- **v0.5:** assessment dashboard and API
 
-- VAPT methodology
-- reconnaissance and service enumeration
-- web vulnerability assessment
-- secure process execution
-- scanner integration and parsing
-- finding normalization and correlation
-- false-positive awareness
-- evidence-driven reporting
-- remediation and retesting concepts
-- Python security engineering
-- CI and dependency security
+See [`ROADMAP.md`](ROADMAP.md).
+
+## Portfolio skills demonstrated
+
+VAPT methodology, reconnaissance, web security assessment, TLS analysis, Python security engineering, secure process execution, machine-readable scanner integration, finding normalization, evidence correlation, false-positive awareness, remediation reporting, automated tests, CI, and dependency security.
 
 ## License
 

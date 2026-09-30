@@ -1,0 +1,20 @@
+{
+  "results": [
+    {
+      "url": "http://127.0.0.1:3000/admin",
+      "status": 200,
+      "length": 1234,
+      "words": 100,
+      "lines": 30,
+      "input": {"FUZZ": "admin"}
+    },
+    {
+      "url": "http://127.0.0.1:3000/.env",
+      "status": 200,
+      "length": 80,
+      "words": 5,
+      "lines": 4,
+      "input": {"FUZZ": ".env"}
+    }
+  ]
+}
