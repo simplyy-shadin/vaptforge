@@ -179,6 +179,12 @@ class AssessmentStore:
             return None
         return AssessmentRecord.model_validate(dict(row))
 
+    def list_assessments(self) -> list[AssessmentRecord]:
+        rows = self.connection.execute(
+            "SELECT * FROM assessments ORDER BY created_at DESC"
+        ).fetchall()
+        return [AssessmentRecord.model_validate(dict(row)) for row in rows]
+
     def _asset_id(self, assessment_id: str, finding: Finding) -> str:
         asset = finding.asset
         row = self.connection.execute(

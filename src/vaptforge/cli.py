@@ -10,8 +10,10 @@ from rich.table import Table
 
 from vaptforge import __version__
 from vaptforge.correlation.engine import correlate_findings
-from vaptforge.models.finding import Finding
+from vaptforge.enrichment.owasp import enrich_owasp
+from vaptforge.models.finding import Evidence, Finding, FindingStatus
 from vaptforge.models.scope import AuthorizedScope
+from vaptforge.persistence.store import AssessmentStore, InvalidStatusTransition
 from vaptforge.reporting.markdown import render_markdown_report
 from vaptforge.scanners.base import Scanner
 from vaptforge.scanners.ffuf import FfufScanner
@@ -80,8 +82,10 @@ def scan(
     ),
     output: Path = typer.Option(Path("assessment-report.md"), "--output"),
     json_output: Path | None = typer.Option(None, "--json-output"),
+    database: Path | None = typer.Option(None, "--db"),
+    assessment_id: str | None = typer.Option(None, "--assessment-id"),
 ) -> None:
-    """Run selected non-destructive scanners against an explicitly authorized target."""
+    """Run selected scanners and optionally persist the assessment to SQLite."""
     scope = AuthorizedScope.from_json_file(scope_file)
     scope.require_authorized(target)
 
@@ -96,7 +100,7 @@ def scan(
         console.print(f"[cyan]Running {name}[/cyan] against {target}")
         findings.extend(registry[name].scan(target, scope))
 
-    findings = correlate_findings(findings)
+    findings = [enrich_owasp(item) for item in correlate_findings(findings)]
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         render_markdown_report(scope.assessment_name, target, findings),
@@ -110,8 +114,129 @@ def scan(
             encoding="utf-8",
         )
 
+    if database:
+        with AssessmentStore(database) as store:
+            if assessment_id:
+                assessment = store.get_assessment(assessment_id)
+                if assessment is None:
+                    raise typer.BadParameter(f"Assessment not found: {assessment_id}")
+            else:
+                assessment = store.create_assessment(
+                    name=scope.assessment_name,
+                    authorization_reference=scope.authorization_reference,
+                    target=target,
+                )
+            store.save_findings(assessment.id, findings)
+            console.print(f"Assessment ID: [bold]{assessment.id}[/bold]")
+
     console.print(f"[green]Completed[/green] — {len(findings)} normalized findings")
     console.print(f"Report: {output}")
+
+
+@app.command("assessment-list")
+def assessment_list(
+    database: Path = typer.Option(Path("vaptforge.db"), "--db"),
+) -> None:
+    """List persisted assessments."""
+    with AssessmentStore(database) as store:
+        assessments = store.list_assessments()
+
+    table = Table(title="VAPTForge Assessments")
+    table.add_column("ID")
+    table.add_column("Name")
+    table.add_column("Target")
+    table.add_column("Updated")
+    for assessment in assessments:
+        table.add_row(
+            assessment.id,
+            assessment.name,
+            assessment.target,
+            assessment.updated_at.isoformat(timespec="seconds"),
+        )
+    console.print(table)
+
+
+@app.command("finding-list")
+def finding_list(
+    assessment_id: str = typer.Argument(...),
+    database: Path = typer.Option(Path("vaptforge.db"), "--db"),
+) -> None:
+    """List persisted findings for an assessment."""
+    with AssessmentStore(database) as store:
+        findings = store.list_findings(assessment_id)
+
+    table = Table(title=f"Findings — {assessment_id}")
+    table.add_column("ID")
+    table.add_column("Severity")
+    table.add_column("Status")
+    table.add_column("Title")
+    for stored in findings:
+        table.add_row(
+            stored.id,
+            stored.finding.severity.label(),
+            stored.finding.status.value,
+            stored.finding.title,
+        )
+    console.print(table)
+
+
+@app.command("finding-transition")
+def finding_transition(
+    finding_id: str = typer.Argument(...),
+    status: FindingStatus = typer.Argument(...),
+    database: Path = typer.Option(Path("vaptforge.db"), "--db"),
+    note: str | None = typer.Option(None, "--note"),
+) -> None:
+    """Transition a finding through the validation/remediation lifecycle."""
+    try:
+        with AssessmentStore(database) as store:
+            store.transition_finding(finding_id, status, note=note)
+    except (KeyError, InvalidStatusTransition) as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=2) from exc
+    console.print(f"[green]Updated[/green] {finding_id} -> {status.value}")
+
+
+@app.command("finding-note")
+def finding_note(
+    finding_id: str = typer.Argument(...),
+    note: str = typer.Option(..., "--note"),
+    database: Path = typer.Option(Path("vaptforge.db"), "--db"),
+) -> None:
+    """Attach a manual validation note to a finding."""
+    try:
+        with AssessmentStore(database) as store:
+            store.add_validation_note(finding_id, note)
+    except KeyError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=2) from exc
+    console.print(f"[green]Note added[/green] to {finding_id}")
+
+
+@app.command("finding-evidence")
+def finding_evidence(
+    finding_id: str = typer.Argument(...),
+    source: str = typer.Option("manual", "--source"),
+    summary: str = typer.Option(..., "--summary"),
+    attachment: Path | None = typer.Option(None, "--attachment"),
+    database: Path = typer.Option(Path("vaptforge.db"), "--db"),
+) -> None:
+    """Attach manual evidence metadata to a persisted finding."""
+    if attachment is not None and not attachment.exists():
+        raise typer.BadParameter(f"Attachment does not exist: {attachment}")
+
+    evidence = Evidence(
+        source=source,
+        summary=summary,
+        attachment_path=str(attachment) if attachment else None,
+    )
+    try:
+        with AssessmentStore(database) as store:
+            store.add_evidence(finding_id, evidence)
+    except KeyError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=2) from exc
+    console.print(f"[green]Evidence added[/green] to {finding_id}")
 
 
 if __name__ == "__main__":

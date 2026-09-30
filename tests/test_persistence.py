@@ -31,6 +31,7 @@ def test_assessment_store_persists_finding_and_lifecycle(tmp_path: Path) -> None
             authorization_reference="Owned lab",
             target="http://127.0.0.1:3000",
         )
+        assert store.list_assessments()[0].id == assessment.id
         finding_id = store.save_finding(assessment.id, sample_finding())
 
         stored = store.get_finding(finding_id)
@@ -62,6 +63,7 @@ def test_assessment_store_persists_finding_and_lifecycle(tmp_path: Path) -> None
         assert updated.finding.evidence[-1].attachment_path == "evidence/VF-001.png"
         assert len(store.status_history(finding_id)) == 2
         assert len(store.list_validation_notes(finding_id)) == 2
+        assert len(store.list_findings(assessment.id)) == 1
 
 
 def test_invalid_status_transition_is_rejected(tmp_path: Path) -> None:
