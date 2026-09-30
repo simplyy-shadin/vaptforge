@@ -25,6 +25,12 @@ class Severity(IntEnum):
         return self.name
 
 
+class FindingConfidence(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
 class FindingStatus(StrEnum):
     DISCOVERED = "discovered"
     POTENTIAL = "potential"
@@ -55,6 +61,7 @@ class Finding(BaseModel):
     asset: AssetRef
     source: str
     status: FindingStatus = FindingStatus.DISCOVERED
+    confidence: FindingConfidence | None = None
     description: str | None = None
     location: str | None = None
     cves: list[str] = Field(default_factory=list)
