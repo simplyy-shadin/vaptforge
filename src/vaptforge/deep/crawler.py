@@ -110,8 +110,8 @@ def _query_parameters(url: str) -> list[DiscoveredParameter]:
     parsed = urlsplit(url)
     endpoint = urlunsplit((parsed.scheme, parsed.netloc, parsed.path or "/", "", ""))
     return [
-        DiscoveredParameter(endpoint=endpoint, name=name, source="query")
-        for name, _value in parse_qsl(parsed.query, keep_blank_values=True)
+        DiscoveredParameter(endpoint=endpoint, name=name, source="query", value=value)
+        for name, value in parse_qsl(parsed.query, keep_blank_values=True)
         if name
     ]
 
