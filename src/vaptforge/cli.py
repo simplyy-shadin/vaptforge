@@ -560,12 +560,14 @@ def finding_list(
     table.add_column("ID")
     table.add_column("Severity")
     table.add_column("Status")
+    table.add_column("Confidence")
     table.add_column("Title")
     for stored in findings:
         table.add_row(
             stored.id,
             stored.finding.severity.label(),
             stored.finding.status.value,
+            stored.finding.confidence.value if stored.finding.confidence else "-",
             stored.finding.title,
         )
     console.print(table)
