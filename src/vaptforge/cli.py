@@ -10,6 +10,7 @@ from rich.table import Table
 
 from vaptforge import __version__
 from vaptforge.correlation.engine import correlate_findings
+from vaptforge.deep.session import session_environment_status
 from vaptforge.enrichment.owasp import enrich_owasp
 from vaptforge.jobs.worker import AssessmentWorker
 from vaptforge.models.finding import Evidence, Finding, FindingStatus
@@ -327,6 +328,28 @@ def scope_check(
         console.print(f"[green]AUTHORIZED[/green] - {target}")
     else:
         console.print(f"[red]NOT AUTHORIZED[/red] - {target}")
+        raise typer.Exit(code=2)
+
+
+@app.command("session-check")
+def session_check(
+    scope_file: Path = typer.Option(..., "--scope", exists=True, readable=True),
+) -> None:
+    """Check configured authenticated-session environment references without printing secrets."""
+    scope = AuthorizedScope.from_json_file(scope_file)
+    if scope.session is None:
+        console.print("[yellow]No authenticated session configured in this scope.[/yellow]")
+        return
+
+    table = Table(title="VAPTForge Session Environment")
+    table.add_column("Environment variable")
+    table.add_column("Status")
+    missing = False
+    for name, available in session_environment_status(scope):
+        table.add_row(name, "available" if available else "missing")
+        missing = missing or not available
+    console.print(table)
+    if missing:
         raise typer.Exit(code=2)
 
 
