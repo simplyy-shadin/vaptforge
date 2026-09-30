@@ -1,4 +1,4 @@
-# Guided Startup (v0.8)
+# Guided Startup (v0.9)
 
 VAPTForge v0.8 makes the safe path the easiest path. New users can start with one command:
 
@@ -16,7 +16,7 @@ It walks through:
 
 1. **Authorization scope** — choose an existing JSON scope or create a new one after explicitly confirming authorization.
 2. **Target** — choose a target derived from the scope. Localhost scopes include friendly Juice Shop and DVWA suggestions.
-3. **Assessment profile** — choose Quick, Web, Network, or Full instead of typing scanner names.
+3. **Assessment profile** — choose Quick, Web, Network, Full, or Deep instead of typing scanner names.
 4. **Tool readiness** — optional external scanner binaries that are not installed are shown and skipped. Built-in checks remain available.
 5. **Confirmation** — review target, scope, profile, and scanner list before the job is queued.
 6. **Platform startup** — the same SQLite database is used by the background worker and FastAPI dashboard.
@@ -45,7 +45,7 @@ The original `--scanners` option remains available for exact scanner selection.
 | `quick` | Fast baseline with no external binaries required | HTTP, TLS |
 | `web` | Web application assessment | HTTP, TLS, httpx, Nikto, Nuclei, ffuf |
 | `network` | Host/service-oriented assessment | Nmap, Nuclei |
-| `full` | Complete authorized assessment | HTTP, TLS, httpx, Nmap, Nikto, Nuclei, ffuf |
+| `full` | Complete baseline authorized assessment | HTTP, TLS, httpx, Nmap, Nikto, Nuclei, ffuf |\n| `deep` | Bounded native attack-surface and vulnerability-candidate analysis plus the full stack | HTTP, TLS, deep-web, httpx, Nmap, Nikto, Nuclei, ffuf |
 
 Run:
 
@@ -53,7 +53,7 @@ Run:
 vaptforge profile-list
 ```
 
-to see the profiles and which scanners are ready on the current machine.
+to see the profiles and which scanners are ready on the current machine. The built-in `deep-web` scanner does not require an external executable.
 
 In **guided mode**, unavailable optional binaries are skipped with a visible warning. In **manual mode**, profiles retain their intended scanner set so advanced users can detect and troubleshoot missing tools themselves.
 
