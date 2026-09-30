@@ -160,11 +160,15 @@ def test_crawler_rejects_cross_origin_seed() -> None:
         targets=[ScopeEntry(value="127.0.0.1")],
     )
 
-    with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200))) as client:
-        with pytest.raises(PermissionError, match="outside the target origin"):
-            crawl_target(
-                "http://127.0.0.1:4280",
-                scope,
-                client=client,
-                seed_urls=["http://127.0.0.1:8000/other"],
-            )
+    with (
+        httpx.Client(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200))
+        ) as client,
+        pytest.raises(PermissionError, match="outside the target origin"),
+    ):
+        crawl_target(
+            "http://127.0.0.1:4280",
+            scope,
+            client=client,
+            seed_urls=["http://127.0.0.1:8000/other"],
+        )
