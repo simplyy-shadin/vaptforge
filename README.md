@@ -10,13 +10,16 @@ VAPTForge is a portfolio-grade **Vulnerability Assessment and Penetration Testin
 
 > **Authorized testing only.** Every scan requires explicit scope. Use VAPTForge only on systems you own or have written permission to assess.
 
-## Current release: v0.8.0
+## Current release: v0.9.0
 
 ```text
 AUTHORIZED SCOPE
       |
       v
 RECON + WEB/TLS ASSESSMENT
+      |
+      v
+DEEP ATTACK-SURFACE + SAFE NATIVE ANALYSIS
       |
       v
 NORMALIZE + CORRELATE + ENRICH
@@ -126,7 +129,7 @@ List the simple profiles:
 vaptforge profile-list
 ```
 
-Profiles currently include **quick**, **web**, **network**, and **full**. Guided mode checks which optional scanner binaries are actually installed and clearly skips unavailable ones instead of hiding the decision.
+Profiles currently include **quick**, **web**, **network**, **full**, and **deep**. Deep mode adds the native attack-surface crawler and bounded active parameter analysis while preserving manual validation. Guided mode checks which optional scanner binaries are actually installed and clearly skips unavailable ones instead of hiding the decision.
 
 Start the local vulnerable lab:
 
@@ -205,7 +208,7 @@ pytest
 
 GitHub Actions tests Python 3.12 and 3.13. A separate workflow runs `pip-audit`.
 
-The test suite covers authorization, parser normalization, custom HTTP/TLS checks, correlation, CVSS, OWASP enrichment, SQLite migrations/lifecycle persistence, scanner plugin loading, SARIF interchange, SBOM generation, retest classification, HTML/PDF generation, FastAPI endpoints, API mutation security, report exports, and dashboard rendering.
+The test suite covers authorization, parser normalization, custom HTTP/TLS checks, deep crawler boundaries, native vulnerability heuristics, correlation, CVSS, OWASP enrichment, SQLite migrations/lifecycle persistence, scanner plugin loading, SARIF interchange, SBOM generation, retest classification, HTML/PDF generation, FastAPI endpoints, API mutation security, report exports, and dashboard rendering.
 
 ## Portfolio positioning
 
