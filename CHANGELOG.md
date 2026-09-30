@@ -2,6 +2,19 @@
 
 All notable VAPTForge changes are documented here. The project follows semantic versioning for portfolio milestones.
 
+## [0.9.2] - 2026-09-30
+
+### Added
+- Environment-referenced authenticated session support for the native Deep scanner.
+- Scope session configuration for cookie, Authorization, and additional request-header values sourced from environment variables.
+- `vaptforge session-check` to verify session environment readiness without printing values.
+- Authenticated scope example for local lab assessments.
+
+### Security
+- Raw session values are not serialized into scope JSON or persisted job state; only environment-variable names are stored.
+- Missing configured session variables fail closed before the native Deep scan starts.
+- Transport-sensitive headers such as Host, Content-Length, and Transfer-Encoding cannot be overridden through session configuration.
+
 ## [0.9.1] - 2026-09-30
 
 ### Added
