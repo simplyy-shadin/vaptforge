@@ -10,7 +10,6 @@ from vaptforge.ux.guided import safe_scope_filename, target_suggestions
 from vaptforge.ux.platform import build_platform_commands
 from vaptforge.ux.profiles import get_profile, resolve_profile_scanners
 
-
 runner = CliRunner()
 
 
