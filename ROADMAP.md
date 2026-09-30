@@ -31,13 +31,15 @@
 
 ## v0.3 — Assessment lifecycle
 
-- [ ] SQLite persistence
-- [ ] Assessment/asset entities
-- [ ] Finding status transitions
-- [ ] Manual validation notes
-- [ ] Evidence attachments
-- [ ] CVSS scoring
-- [ ] CWE/OWASP enrichment
+- [x] SQLite persistence
+- [x] Assessment/asset entities
+- [x] Finding status transitions with history
+- [x] Manual validation notes
+- [x] Evidence attachment metadata
+- [x] CVSS v3.1 base scoring
+- [x] Curated CWE/OWASP enrichment
+- [x] Persistent-scan CLI workflow
+- [x] Assessment and finding CLI commands
 
 ## v0.4 — Retesting and reporting
 
