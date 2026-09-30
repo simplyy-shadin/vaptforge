@@ -2,7 +2,7 @@
 
 VAPTForge Deep mode is the native attack-surface and vulnerability-candidate analysis layer for explicitly authorized web targets.
 
-It is designed to go beyond tool orchestration while keeping assessment behavior bounded and reviewable.
+It is designed to go beyond tool orchestration while keeping assessment behavior bounded, reviewable, and analyst-controlled.
 
 ## What Deep mode does
 
@@ -11,17 +11,21 @@ The `deep` profile combines the normal VAPTForge scanner stack with the built-in
 - bounded same-origin crawling
 - reachable-page inventory
 - HTML form inventory
-- GET parameter discovery\n- static same-origin JavaScript bundle analysis for API-like routes and query parameters
+- GET parameter discovery
+- static same-origin JavaScript bundle analysis for API-like routes and query parameters
+- environment-backed authenticated sessions
+- optional session verification
+- analyst-directed same-origin crawl seeds
 - benign reflected-input analysis for potential XSS sinks
 - single-quote differential analysis for database error behavior
 - finding confidence metadata
 - correlation with Nuclei, ffuf, Nmap, httpx, HTTP/TLS, and Nikto when available
 
-The native deep scanner does not require an external binary.
+The native Deep scanner does not require an external binary.
 
 ## Safety boundaries
 
-Deep mode still requires an explicit `AuthorizedScope`. Scope is checked before crawling and before active parameter requests.
+Deep mode still requires an explicit `AuthorizedScope`. Scope is checked before crawling, session verification, crawl seeds, and active parameter requests.
 
 The native engine intentionally does **not**:
 
@@ -73,15 +77,6 @@ vaptforge queue-assessment http://127.0.0.1:3000 \
   --db data/vaptforge.db
 ```
 
-Direct scanner selection:
-
-```bash
-vaptforge scan http://127.0.0.1:3000 \
-  --scope config/scope.example.json \
-  --scanners http,tls,deep-web,httpx,nmap,nuclei,ffuf \
-  --db data/vaptforge.db
-```
-
 Optional scanners that are unavailable are visibly skipped in guided mode. The native `deep-web` engine remains available because it is implemented in Python inside VAPTForge.
 
 ## Interpreting native findings
@@ -98,81 +93,57 @@ VAPTForge compares a baseline GET response with a request where one discovered p
 
 No UNION queries, time delays, data extraction, authentication bypass, or database enumeration are attempted.
 
-## Why this architecture
+## Authenticated Deep scanning
 
-The goal is to make VAPTForge useful to a penetration tester without hiding important judgment behind automation:
+Deep mode can reuse an already-authorized application session without storing raw session values in VAPTForge persistence.
 
-1. discover the attack surface
-2. collect bounded evidence
-3. create clearly labeled vulnerability candidates
-4. correlate with external scanner evidence
-5. let the analyst validate
-6. preserve evidence and confidence
-7. retest after remediation
-
-This keeps the tool useful for real assessment workflow while making false-positive handling and analyst responsibility explicit.
-
-
-## Authenticated session-aware Deep scanning
-
-Deep mode can reuse an already-authorized application session without storing the cookie or token in the VAPTForge database.
-
-The scope contains only **environment-variable names**:
+A scope stores only environment-variable names plus non-secret verification and crawl metadata:
 
 ```json
 {
-  "assessment_name": "Authenticated DVWA Lab",
-  "authorization_reference": "Locally owned Docker lab",
+  "assessment_name": "Authenticated Lab",
+  "authorization_reference": "Owned lab",
   "targets": [{"value": "127.0.0.1"}],
   "session": {
-    "cookie_env": "VAPTFORGE_DVWA_COOKIE"
-  }
+    "cookie_env": "VAPTFORGE_SESSION_COOKIE",
+    "verify_url": "http://127.0.0.1:4280/index.php",
+    "verify_status": 200,
+    "success_contains": "Authenticated Area"
+  },
+  "crawl_seeds": [
+    "/authenticated/search/",
+    "/authenticated/profile/"
+  ]
 }
 ```
 
-Set the actual value only in the process environment. Example for PowerShell after signing in to your own DVWA lab:
-
-```powershell
-$env:VAPTFORGE_DVWA_COOKIE="security=low; PHPSESSID=<your-lab-session-id>"
-python -m vaptforge.cli session-check --scope config/scope.authenticated.example.json
-python -m vaptforge.cli start
-```
-
-The worker inherits the environment from the launcher. The secret value is resolved only when the native Deep HTTP client sends requests. Scope/job serialization stores `VAPTFORGE_DVWA_COOKIE`, not its value.
-
-Bearer/API sessions are also supported without persistence:
-
-```json
-"session": {
-  "authorization_env": "VAPTFORGE_AUTHORIZATION",
-  "headers_env": {
-    "X-CSRF-Token": "VAPTFORGE_CSRF_TOKEN"
-  }
-}
-```
-
-Do not put raw cookies, bearer tokens, API keys, or CSRF tokens directly in scope JSON. Clear temporary environment variables after the assessment if appropriate.
-
-
-## Session-aware authenticated crawling
-
-Deep mode can reuse an authorized application session while keeping secret values out of VAPTForge persistence. A scope stores only environment-variable references:
-
-```json
-{
-  "session": {
-    "cookie_env": "VAPTFORGE_SESSION_COOKIE"
-  }
-}
-```
-
-Set the actual value in the process environment, then verify readiness:
+Set the actual secret only in the process environment:
 
 ```powershell
 $env:VAPTFORGE_SESSION_COOKIE="<authorized-session-cookie>"
 python -m vaptforge.cli session-check --scope config/scope.authenticated.example.json
 ```
 
-The launcher/worker inherits the environment. VAPTForge resolves the value only when the native Deep HTTP client makes requests. Scope JSON and SQLite job state contain the environment-variable name, not the secret value.
+The worker inherits the launcher environment. Scope JSON and SQLite job state contain the environment-variable name, not its value.
 
-Authorization-header and custom-header references are also supported through `authorization_env` and `headers_env`. Missing configured variables fail closed. Do not place raw session values directly in scope files.
+When `verify_url` is configured, VAPTForge performs a same-origin verification request before crawling. It checks the expected status and, when supplied, the success marker. A failed verification stops the native Deep scan instead of silently scanning the login page.
+
+`crawl_seeds` let the analyst direct the crawler toward known in-scope authenticated areas. Seeds are resolved against the assessment target and must remain same-origin and authorized. Cross-origin or state-changing seeds are rejected.
+
+Authorization-header and custom-header references are also supported through `authorization_env` and `headers_env`. Missing configured variables fail closed. Do not place raw cookies, bearer tokens, API keys, or CSRF tokens directly in scope files.
+
+## Why this architecture
+
+The goal is to make VAPTForge useful to a penetration tester without hiding important judgment behind automation:
+
+1. discover the attack surface
+2. verify authenticated state when configured
+3. seed known in-scope application areas
+4. collect bounded evidence
+5. create clearly labeled vulnerability candidates
+6. correlate with external scanner evidence
+7. let the analyst validate
+8. preserve evidence and confidence
+9. retest after remediation
+
+This keeps the tool useful for real assessment workflow while making false-positive handling and analyst responsibility explicit.
