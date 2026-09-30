@@ -8,6 +8,7 @@ import httpx
 
 from vaptforge.core.targets import http_url_from_target
 from vaptforge.deep.crawler import CrawlResult, DiscoveredParameter, crawl_target
+from vaptforge.deep.session import resolve_session_headers
 from vaptforge.models.finding import (
     AssetRef,
     Evidence,
