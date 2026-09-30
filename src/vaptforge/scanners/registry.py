@@ -12,6 +12,7 @@ class ScannerPluginError(RuntimeError):
 
 
 def _builtin_scanners() -> list[Scanner]:
+    from vaptforge.scanners.deep_web import DeepWebScanner
     from vaptforge.scanners.ffuf import FfufScanner
     from vaptforge.scanners.http_security import HttpSecurityScanner
     from vaptforge.scanners.httpx_probe import HttpxScanner
@@ -23,6 +24,7 @@ def _builtin_scanners() -> list[Scanner]:
     return [
         HttpSecurityScanner(),
         TlsSecurityScanner(),
+        DeepWebScanner(),
         HttpxScanner(),
         NmapScanner(),
         NucleiScanner(),
