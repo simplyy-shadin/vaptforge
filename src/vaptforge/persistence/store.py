@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import sqlite3
 import uuid
 from datetime import UTC, datetime
@@ -9,12 +8,10 @@ from pathlib import Path
 from vaptforge.models.assessment import (
     AssessmentRecord,
     StatusHistoryRecord,
-    RetestRunRecord,
     StoredFinding,
     ValidationNoteRecord,
 )
 from vaptforge.models.finding import Evidence, Finding, FindingStatus
-from vaptforge.retest.engine import RetestResult
 
 ALLOWED_TRANSITIONS: dict[FindingStatus, set[FindingStatus]] = {
     FindingStatus.DISCOVERED: {
@@ -132,16 +129,6 @@ class AssessmentStore:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 finding_id TEXT NOT NULL REFERENCES findings(id) ON DELETE CASCADE,
                 note TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS retest_runs (
-                id TEXT PRIMARY KEY,
-                before_assessment_id TEXT NOT NULL
-                    REFERENCES assessments(id) ON DELETE CASCADE,
-                after_assessment_id TEXT NOT NULL
-                    REFERENCES assessments(id) ON DELETE CASCADE,
-                result_json TEXT NOT NULL,
                 created_at TEXT NOT NULL
             );
             """
@@ -484,69 +471,6 @@ class AssessmentStore:
                 new_status=FindingStatus(str(row["new_status"])),
                 note=str(row["note"]) if row["note"] is not None else None,
                 changed_at=datetime.fromisoformat(str(row["changed_at"])),
-            )
-            for row in rows
-        ]
-
-
-    def save_retest(
-        self,
-        before_assessment_id: str,
-        after_assessment_id: str,
-        results: list[RetestResult],
-    ) -> RetestRunRecord:
-        if self.get_assessment(before_assessment_id) is None:
-            raise KeyError(f"Assessment not found: {before_assessment_id}")
-        if self.get_assessment(after_assessment_id) is None:
-            raise KeyError(f"Assessment not found: {after_assessment_id}")
-
-        run_id = str(uuid.uuid4())
-        created_at = _now()
-        payload = json.dumps(
-            [result.model_dump(mode="json") for result in results],
-            separators=(",", ":"),
-        )
-        self.connection.execute(
-            """
-            INSERT INTO retest_runs
-                (id, before_assessment_id, after_assessment_id, result_json, created_at)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (
-                run_id,
-                before_assessment_id,
-                after_assessment_id,
-                payload,
-                created_at.isoformat(),
-            ),
-        )
-        self.connection.commit()
-        return RetestRunRecord(
-            id=run_id,
-            before_assessment_id=before_assessment_id,
-            after_assessment_id=after_assessment_id,
-            results=results,
-            created_at=created_at,
-        )
-
-    def list_retests(self) -> list[RetestRunRecord]:
-        rows = self.connection.execute(
-            """
-            SELECT id, before_assessment_id, after_assessment_id, result_json, created_at
-            FROM retest_runs
-            ORDER BY created_at DESC
-            """
-        ).fetchall()
-        return [
-            RetestRunRecord(
-                id=str(row["id"]),
-                before_assessment_id=str(row["before_assessment_id"]),
-                after_assessment_id=str(row["after_assessment_id"]),
-                results=[
-                    RetestResult.model_validate(item)
-                    for item in json.loads(str(row["result_json"]))
-                ],
-                created_at=datetime.fromisoformat(str(row["created_at"])),
             )
             for row in rows
         ]
