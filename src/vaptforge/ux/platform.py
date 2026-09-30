@@ -76,14 +76,15 @@ def run_platform(
 
     worker = subprocess.Popen(commands.worker, env=env)
     api = subprocess.Popen(commands.api, env=env)
-    url = f"http://{host}:{port}/"
+    client_host = "127.0.0.1" if host in {"0.0.0.0", "::"} else host
+    url = f"http://{client_host}:{port}/"
 
     try:
         for _ in range(30):
             if api.poll() is not None:
                 raise RuntimeError("VAPTForge API stopped during startup")
             try:
-                response = httpx.get(f"http://{host}:{port}/health", timeout=0.25)
+                response = httpx.get(f"http://{client_host}:{port}/health", timeout=0.25)
                 if response.status_code == 200:
                     break
             except httpx.HTTPError:
