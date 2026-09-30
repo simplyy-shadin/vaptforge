@@ -26,6 +26,7 @@ class DiscoveredParameter:
     endpoint: str
     name: str
     source: str
+    value: str = ""
 
 
 @dataclass(frozen=True)
