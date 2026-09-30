@@ -2,6 +2,19 @@
 
 All notable VAPTForge changes are documented here. The project follows semantic versioning for portfolio milestones.
 
+## [0.9.1] - 2026-09-30
+
+### Added
+- Static same-origin JavaScript bundle analysis for API-like routes used by SPA targets.
+- Script-source and JavaScript-endpoint inventories in Deep assessment evidence.
+- Query parameters discovered inside JavaScript API route strings can feed the existing bounded safe active-analysis stage.
+- Bounds for JavaScript analysis: up to 12 same-origin scripts, 1 MB per script, and 100 extracted endpoints.
+
+### Security
+- JavaScript is parsed as text and never executed.
+- Cross-origin endpoints are discarded and state-changing path markers remain excluded.
+- JavaScript-discovered parameters still use the existing GET-only, capped, non-exploitative Deep analysis.
+
 ## [0.9.0] - 2026-09-30
 
 ### Added
