@@ -10,7 +10,6 @@ from vaptforge.models.finding import AssetRef, Evidence, Finding, Severity
 from vaptforge.models.scope import AuthorizedScope
 from vaptforge.scanners.base import Scanner
 
-
 HEADER_CHECKS: dict[str, tuple[str, Severity, str]] = {
     "content-security-policy": (
         "Content Security Policy header missing",
