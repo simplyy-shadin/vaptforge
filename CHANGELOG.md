@@ -2,6 +2,22 @@
 
 All notable VAPTForge changes are documented here. The project follows semantic versioning for portfolio milestones.
 
+## [0.9.0] - 2026-09-30
+
+### Added
+- New `deep` assessment profile combining the full scanner stack with a native `deep-web` engine.
+- Bounded same-origin crawler for reachable pages, forms, and GET-parameter inventory.
+- Safe native reflected-input analysis using benign HTML-special-character markers.
+- Safe SQL-error differential checks using a single-quote mutation without data extraction, time delays, or exploitation.
+- Optional finding confidence (`low`, `medium`, `high`) kept separate from analyst lifecycle status.
+- Confidence display in CLI finding lists, dashboard tables, and Markdown/HTML/PDF reports.
+- Deep-assessment methodology and safety-boundary documentation.
+
+### Security
+- Deep crawling remains authorization-gated, same-origin, GET-only, depth/page bounded, and skips paths associated with destructive/state-changing actions.
+- Native parameter analysis is capped, avoids brute force and POST submission, and never auto-promotes findings to VERIFIED.
+- Potential XSS and SQL injection observations explicitly require analyst validation.
+
 ## [0.8.3] - 2026-09-30
 
 ### Fixed

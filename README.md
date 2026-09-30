@@ -10,13 +10,16 @@ VAPTForge is a portfolio-grade **Vulnerability Assessment and Penetration Testin
 
 > **Authorized testing only.** Every scan requires explicit scope. Use VAPTForge only on systems you own or have written permission to assess.
 
-## Current release: v0.8.0
+## Current release: v0.9.0
 
 ```text
 AUTHORIZED SCOPE
       |
       v
 RECON + WEB/TLS ASSESSMENT
+      |
+      v
+DEEP ATTACK-SURFACE + SAFE NATIVE ANALYSIS
       |
       v
 NORMALIZE + CORRELATE + ENRICH
@@ -38,6 +41,7 @@ MD / JSON / HTML / PDF      FILTER / EXPORT / HISTORY
 
 **Assessment**
 - Python-native HTTP header, cookie, CORS, method, and TLS checks
+- native Deep Web engine with bounded same-origin crawling, page/form/GET-parameter inventory, benign reflection analysis, and SQL-error differential checks
 - Nmap, Nuclei, Nikto, ffuf, and ProjectDiscovery httpx adapters
 - machine-readable parser layer
 - pluggable scanner SDK via `vaptforge.scanners` Python entry points
@@ -52,7 +56,7 @@ MD / JSON / HTML / PDF      FILTER / EXPORT / HISTORY
 - scanner findings never auto-promoted to VERIFIED
 
 **Analysis**
-- Pydantic finding/evidence model
+- Pydantic finding/evidence model with separate lifecycle status and evidence confidence
 - deterministic fingerprints
 - CVE-based cross-scanner correlation
 - evidence deduplication
@@ -126,7 +130,7 @@ List the simple profiles:
 vaptforge profile-list
 ```
 
-Profiles currently include **quick**, **web**, **network**, and **full**. Guided mode checks which optional scanner binaries are actually installed and clearly skips unavailable ones instead of hiding the decision.
+Profiles currently include **quick**, **web**, **network**, **full**, and **deep**. Deep mode adds the native attack-surface crawler and bounded active parameter analysis while preserving manual validation. Guided mode checks which optional scanner binaries are actually installed and clearly skips unavailable ones instead of hiding the decision.
 
 Start the local vulnerable lab:
 
@@ -144,7 +148,7 @@ For advanced/manual background execution, you can still control every component 
 
 ```bash
 vaptforge worker --db data/vaptforge.db
-vaptforge queue-assessment http://127.0.0.1:3000 --scope config/scope.example.json --profile web --db data/vaptforge.db
+vaptforge queue-assessment http://127.0.0.1:3000 --scope config/scope.example.json --profile deep --db data/vaptforge.db
 vaptforge job-status <JOB_ID> --db data/vaptforge.db
 ```
 
@@ -193,6 +197,7 @@ See [API and Dashboard](docs/api-dashboard.md).
 - [SARIF and SBOM](docs/sarif-sbom.md)
 - [Background jobs](docs/background-jobs.md)
 - [Guided startup](docs/guided-startup.md)
+- [Deep assessment engine](docs/deep-assessment.md)
 - [Security policy](SECURITY.md)
 - [Roadmap](ROADMAP.md)
 
@@ -205,7 +210,7 @@ pytest
 
 GitHub Actions tests Python 3.12 and 3.13. A separate workflow runs `pip-audit`.
 
-The test suite covers authorization, parser normalization, custom HTTP/TLS checks, correlation, CVSS, OWASP enrichment, SQLite migrations/lifecycle persistence, scanner plugin loading, SARIF interchange, SBOM generation, retest classification, HTML/PDF generation, FastAPI endpoints, API mutation security, report exports, and dashboard rendering.
+The test suite covers authorization, parser normalization, custom HTTP/TLS checks, deep crawler boundaries, native vulnerability heuristics, correlation, CVSS, OWASP enrichment, SQLite migrations/lifecycle persistence, scanner plugin loading, SARIF interchange, SBOM generation, retest classification, HTML/PDF generation, FastAPI endpoints, API mutation security, report exports, and dashboard rendering.
 
 ## Portfolio positioning
 

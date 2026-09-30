@@ -35,8 +35,26 @@ PROFILES: dict[str, AssessmentProfile] = {
     "full": AssessmentProfile(
         name="full",
         label="Full",
-        description="All built-in VAPTForge scanners for an authorized lab or assessment target.",
+        description="All baseline web and network scanners for an authorized assessment target.",
         scanners=("http", "tls", "httpx", "nmap", "nikto", "nuclei", "ffuf"),
+    ),
+    "deep": AssessmentProfile(
+        name="deep",
+        label="Deep",
+        description=(
+            "Bounded attack-surface crawling plus safe native parameter analysis and the full "
+            "scanner stack. No brute force, destructive checks, or automatic exploitation."
+        ),
+        scanners=(
+            "http",
+            "tls",
+            "deep-web",
+            "httpx",
+            "nmap",
+            "nikto",
+            "nuclei",
+            "ffuf",
+        ),
     ),
 }
 

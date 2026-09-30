@@ -98,7 +98,12 @@ def render_pdf_bytes(
                 ),
                 Paragraph(
                     f"<b>Severity:</b> {escape(finding.severity.label())} | "
-                    f"<b>Status:</b> {escape(finding.status.value)}",
+                    f"<b>Status:</b> {escape(finding.status.value)}"
+                    + (
+                        f" | <b>Confidence:</b> {escape(finding.confidence.value)}"
+                        if finding.confidence is not None
+                        else ""
+                    ),
                     styles["BodyText"],
                 ),
                 Paragraph(

@@ -60,6 +60,22 @@
 - [x] Automatic optional-tool availability handling in guided mode
 - [x] Root `-h` / `--help` experience and profile discovery
 
+
+## v0.9 - Deep assessment engine
+
+- [x] Deep assessment profile
+- [x] Bounded same-origin crawler
+- [x] Reachable page, form, and GET-parameter inventory
+- [x] Native benign reflection analysis for potential XSS sinks
+- [x] Native SQL-error differential analysis for potential injection
+- [x] Finding confidence model separate from lifecycle status
+- [x] Confidence surfaced in CLI, dashboard, and reports
+- [x] Deep-assessment methodology and safety documentation
+- [ ] Authenticated browser/session-aware crawling
+- [ ] JavaScript endpoint extraction
+- [ ] Browser-assisted XSS context validation
+- [ ] Additional safe native checks for redirects and API-specific input handling
+
 ## Future v1.0 hardening
 
 - [x] Database migrations/versioning

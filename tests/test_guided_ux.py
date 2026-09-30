@@ -212,3 +212,34 @@ def test_projectdiscovery_httpx_is_accepted(monkeypatch) -> None:
 
     assert probe.available is True
     assert "ProjectDiscovery" in probe.detail
+
+
+def test_deep_profile_keeps_native_engine_when_optional_tools_are_missing(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "vaptforge.ux.profiles.probe_scanner_tool",
+        lambda name: type(
+            "Probe",
+            (),
+            {
+                "available": name in {"http", "tls", "deep-web"},
+                "detail": "tool not installed",
+            },
+        )(),
+    )
+
+    selected, skipped = resolve_profile_scanners(
+        "deep",
+        registered={
+            "http",
+            "tls",
+            "deep-web",
+            "httpx",
+            "nmap",
+            "nikto",
+            "nuclei",
+            "ffuf",
+        },
+    )
+
+    assert selected == ["http", "tls", "deep-web"]
+    assert any("nuclei" in item for item in skipped)
