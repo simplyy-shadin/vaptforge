@@ -2,6 +2,22 @@
 
 All notable VAPTForge changes are documented here. The project follows semantic versioning for portfolio milestones.
 
+## [0.8.0] - 2026-09-30
+
+### Added
+- Guided `vaptforge start` launcher with recommended automatic and manual/advanced modes.
+- Friendly authorized target suggestions, including local Juice Shop and DVWA lab targets.
+- Quick, web, network, and full assessment profiles.
+- Guided scanner availability detection that clearly skips missing optional tools.
+- Manual `--profile` support for background assessment queueing.
+- Short `vaptforge -h` help alias and improved root help guidance.
+- Platform supervisor that starts the existing background worker and local FastAPI dashboard together.
+
+### Security
+- Guided mode still requires an explicit authorization scope and validates the selected target before queueing.
+- New scope creation requires an explicit authorization confirmation.
+- The platform continues to bind to localhost by default and does not start a scan merely because services start.
+
 ## [0.7.0] - 2026-09-30
 
 ### Added
