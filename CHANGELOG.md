@@ -2,6 +2,13 @@
 
 All notable VAPTForge changes are documented here. The project follows semantic versioning for portfolio milestones.
 
+## [0.8.1] - 2026-09-30
+
+### Fixed
+- External tool detection now verifies that `httpx` is the ProjectDiscovery scanner instead of trusting any executable with the same name.
+- The Python `httpx` CLI installed as a package dependency is reported as incompatible rather than incorrectly enabling the VAPTForge httpx scanner.
+- Guided profile readiness and `vaptforge doctor` now share the same scanner-tool verification logic and provide an explanatory status.
+
 ## [0.8.0] - 2026-09-30
 
 ### Added
