@@ -76,7 +76,7 @@ def run_platform(
 
     worker = subprocess.Popen(commands.worker, env=env)
     api = subprocess.Popen(commands.api, env=env)
-    client_host = "127.0.0.1" if host in {"0.0.0.0", "::"} else host
+    client_host = host
     url = f"http://{client_host}:{port}/"
 
     try:
