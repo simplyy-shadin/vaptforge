@@ -2,6 +2,12 @@
 
 All notable VAPTForge changes are documented here. The project follows semantic versioning for portfolio milestones.
 
+## [0.8.2] - 2026-09-30
+
+### Fixed
+- ffuf content discovery now enables automatic calibration (`-ac`) so SPA fallback pages and wildcard/soft-404 responses are filtered before they become VAPTForge findings.
+- Added a regression test that keeps automatic calibration enabled in the ffuf adapter.
+
 ## [0.8.1] - 2026-09-30
 
 ### Fixed
