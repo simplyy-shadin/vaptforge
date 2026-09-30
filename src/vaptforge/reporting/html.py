@@ -40,7 +40,9 @@ def _finding_html(index: int, finding: Finding) -> str:
   <ul>
     <li><strong>Severity:</strong> {escape(finding.severity.label())}</li>
     <li><strong>Status:</strong> {escape(finding.status.value)}</li>
-    <li><strong>Asset:</strong> <code>{escape(finding.asset.host or finding.asset.target)}</code></li>
+    <li><strong>Asset:</strong> <code>
+      {escape(finding.asset.host or finding.asset.target)}
+    </code></li>
     <li><strong>Location:</strong> <code>{escape(finding.location or "N/A")}</code></li>
     {''.join(mappings)}
   </ul>
