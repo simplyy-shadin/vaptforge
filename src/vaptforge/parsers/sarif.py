@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from vaptforge.models.finding import AssetRef, Evidence, Finding, FindingStatus, Severity
+from vaptforge.models.finding import (
+    AssetRef,
+    Evidence,
+    Finding,
+    FindingStatus,
+    Severity,
+)
 
 
 _LEVEL_SEVERITY = {
