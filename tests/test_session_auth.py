@@ -112,14 +112,16 @@ def test_verify_session_fails_when_marker_is_missing(monkeypatch) -> None:
         ),
     )
 
-    with httpx.Client(
-        transport=httpx.MockTransport(
-            lambda request: httpx.Response(200, text="Login", request=request)
-        ),
-        headers=resolve_session_headers(scope),
-    ) as client:
-        with pytest.raises(SessionConfigurationError, match="success marker"):
-            verify_session(client, scope, "http://127.0.0.1:4280")
+    with (
+        httpx.Client(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text="Login", request=request)
+            ),
+            headers=resolve_session_headers(scope),
+        ) as client,
+        pytest.raises(SessionConfigurationError, match="success marker"),
+    ):
+        verify_session(client, scope, "http://127.0.0.1:4280")
 
 
 def test_verify_session_rejects_cross_origin_probe(monkeypatch) -> None:
@@ -134,7 +136,8 @@ def test_verify_session_rejects_cross_origin_probe(monkeypatch) -> None:
         ),
     )
 
-    httpx = __import__("httpx")
-    with httpx.Client(headers=resolve_session_headers(scope)) as client:
-        with pytest.raises(SessionConfigurationError, match="same origin"):
-            verify_session(client, scope, "http://127.0.0.1:4280")
+    with (
+        httpx.Client(headers=resolve_session_headers(scope)) as client,
+        pytest.raises(SessionConfigurationError, match="same origin"),
+    ):
+        verify_session(client, scope, "http://127.0.0.1:4280")
