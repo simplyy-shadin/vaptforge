@@ -40,7 +40,7 @@ class SessionAuth(BaseModel):
             return None
         value = value.strip()
         if not ENV_NAME_RE.fullmatch(value):
-            raise ValueError("session environment variable names must be valid shell variable names")
+            raise ValueError(\n                "session environment variable names must be valid shell variable names"\n            )
         return value
 
     @field_validator("headers_env")
@@ -64,7 +64,7 @@ class SessionAuth(BaseModel):
     @model_validator(mode="after")
     def require_reference(self) -> SessionAuth:
         if not self.cookie_env and not self.authorization_env and not self.headers_env:
-            raise ValueError("session configuration must reference at least one environment variable")
+            raise ValueError(\n                "session configuration must reference at least one environment variable"\n            )
         return self
 
     def environment_references(self) -> tuple[str, ...]:
