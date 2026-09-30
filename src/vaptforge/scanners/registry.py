@@ -33,9 +33,9 @@ def _builtin_scanners() -> list[Scanner]:
 
 def coerce_scanner_plugin(plugin: Any) -> Scanner:
     candidate = plugin
-    if inspect.isclass(candidate):
-        candidate = candidate()
-    elif callable(candidate) and not isinstance(candidate, Scanner):
+    if inspect.isclass(candidate) or (
+        callable(candidate) and not isinstance(candidate, Scanner)
+    ):
         candidate = candidate()
 
     if not isinstance(candidate, Scanner):
