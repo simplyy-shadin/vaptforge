@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import httpx
 import pytest
 
 from vaptforge.deep.session import (
@@ -82,14 +83,13 @@ def test_verify_session_requires_expected_status_and_marker(monkeypatch) -> None
         ),
     )
 
-    def handler(request):
-        return __import__("httpx").Response(
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
             200,
             text="<html>Authenticated Area</html>",
             request=request,
         )
 
-    httpx = __import__("httpx")
     with httpx.Client(
         transport=httpx.MockTransport(handler),
         headers=resolve_session_headers(scope),
@@ -112,7 +112,6 @@ def test_verify_session_fails_when_marker_is_missing(monkeypatch) -> None:
         ),
     )
 
-    httpx = __import__("httpx")
     with httpx.Client(
         transport=httpx.MockTransport(
             lambda request: httpx.Response(200, text="Login", request=request)
